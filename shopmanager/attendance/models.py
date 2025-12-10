@@ -2,8 +2,9 @@
 # Create your models here.
 from django.db import models
 from employee.models import Employee
+from core.models import BaseModel
 
-class Attendance(models.Model):
+class Attendance(BaseModel):
     employee = models.ForeignKey(Employee, on_delete=models.CASCADE)
     date = models.DateField()
     check_in = models.TimeField()
@@ -16,7 +17,7 @@ class Attendance(models.Model):
         return f"{self.employee} - {self.date}"
 
 
-class BreakRecord(models.Model):
+class BreakRecord(BaseModel):
     attendance = models.ForeignKey(Attendance, related_name='breaks', on_delete=models.CASCADE)
     break_start = models.TimeField()
     break_end = models.TimeField()

@@ -4,8 +4,9 @@
 
 from django.db import models
 from employee.models import Employee
+from core.models import BaseModel
 
-class SalaryRecord(models.Model):
+class SalaryRecord(BaseModel):
     employee = models.ForeignKey(Employee, on_delete=models.CASCADE)
     month = models.DateField()  # store as first day of the month
     total_work_hours = models.DurationField()

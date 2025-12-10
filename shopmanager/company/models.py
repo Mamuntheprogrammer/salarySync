@@ -1,8 +1,9 @@
 from django.db import models
+from core.models import BaseModel
 
 # Create your models here.
 
-class CompanyCode(models.Model):
+class CompanyCode(BaseModel):
     companycode = models.CharField(max_length=10, unique=True)
     name = models.CharField(max_length=100)
     description = models.TextField(blank=True)
@@ -12,7 +13,7 @@ class CompanyCode(models.Model):
         return f"{self.companycode} - {self.name}"
 
 
-class BusinessArea(models.Model):
+class BusinessArea(BaseModel):
     company = models.ForeignKey(CompanyCode, on_delete=models.CASCADE, related_name="business_areas")
     code = models.CharField(max_length=20)
     name = models.CharField(max_length=100)

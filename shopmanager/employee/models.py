@@ -1,10 +1,11 @@
 from django.db import models
+from core.models import BaseModel
 
 # Create your models here.
 
 from company.models import BusinessArea
 
-class Department(models.Model):
+class Department(BaseModel):
     business_area = models.ForeignKey(BusinessArea, on_delete=models.CASCADE)
     name = models.CharField(max_length=100)
 
@@ -12,7 +13,7 @@ class Department(models.Model):
         return self.name
 
 
-class Designation(models.Model):
+class Designation(BaseModel):
     title = models.CharField(max_length=100)
     description = models.TextField(blank=True)
 
@@ -20,7 +21,7 @@ class Designation(models.Model):
         return self.title
 
 
-class Employee(models.Model):
+class Employee(BaseModel):
     emp_code = models.CharField(max_length=20, unique=True)
     full_name = models.CharField(max_length=150)
     business_area = models.ForeignKey(BusinessArea, on_delete=models.CASCADE)

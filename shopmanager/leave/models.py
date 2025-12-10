@@ -4,8 +4,9 @@
 from django.db import models
 from employee.models import Employee
 from company.models import BusinessArea
+from core.models import BaseModel
 
-class LeaveType(models.Model):
+class LeaveType(BaseModel):
     name = models.CharField(max_length=50)
     description = models.TextField(blank=True)
     yearly_quota = models.IntegerField(default=0)
@@ -14,7 +15,7 @@ class LeaveType(models.Model):
         return self.name
 
 
-class HolidayCalendar(models.Model):
+class HolidayCalendar(BaseModel):
     business_area = models.ForeignKey(BusinessArea, on_delete=models.CASCADE,null=True, blank=True)
     name = models.CharField(max_length=100)
     date = models.DateField()
@@ -25,7 +26,7 @@ class HolidayCalendar(models.Model):
         return f"{self.name} - {self.date} ({self.business_area})"
 
 
-class EmployeeLeaveQuota(models.Model):
+class EmployeeLeaveQuota(BaseModel):
     employee = models.ForeignKey(Employee, on_delete=models.CASCADE)
     leave_type = models.ForeignKey(LeaveType, on_delete=models.CASCADE)
     allocated = models.IntegerField(default=0)
@@ -35,7 +36,7 @@ class EmployeeLeaveQuota(models.Model):
         return self.allocated - self.used
 
 
-class LeaveRequest(models.Model):
+class LeaveRequest(BaseModel):
     employee = models.ForeignKey(Employee, on_delete=models.CASCADE)
     leave_type = models.ForeignKey(LeaveType, on_delete=models.SET_NULL, null=True)
     start_date = models.DateField()
