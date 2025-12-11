@@ -1,5 +1,6 @@
 from django.db import models
 from core.models import BaseModel
+from attendance.models import Shift
 
 # Create your models here.
 
@@ -27,6 +28,10 @@ class Employee(BaseModel):
     business_area = models.ForeignKey(BusinessArea, on_delete=models.CASCADE)
     department = models.ForeignKey(Department, on_delete=models.SET_NULL, null=True)
     designation = models.ForeignKey(Designation, on_delete=models.SET_NULL, null=True)
+    nid = models.CharField(max_length=50, blank=True)
+
+    # NEW — Default assigned shift
+    shift = models.ForeignKey(Shift,on_delete=models.SET_NULL,null=True,blank=True,related_name="employees")
 
     join_date = models.DateField()
     base_salary = models.DecimalField(max_digits=10, decimal_places=2)

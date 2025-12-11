@@ -46,3 +46,32 @@ class LeaveRequest(BaseModel):
 
     def __str__(self):
         return f"Leave {self.employee} ({self.start_date} - {self.end_date})"
+
+
+
+class Shift(models.Model):
+    business_area = models.ForeignKey(
+        BusinessArea,
+        on_delete=models.CASCADE,  # Delete shifts when business area is deleted
+        related_name="shifts"
+    )
+
+    shift_code = models.CharField(max_length=20, unique=True)
+    name = models.CharField(max_length=100)
+
+    start_date = models.DateField()
+    end_date = models.DateField(null=True, blank=True)
+
+    start_time = models.TimeField()
+    end_time = models.TimeField()
+
+    daily_hours = models.DecimalField(max_digits=5, decimal_places=2)
+    break_minutes = models.PositiveIntegerField(default=0)
+
+    is_overnight = models.BooleanField(default=False)
+    is_active = models.BooleanField(default=True)
+
+    description = models.TextField(blank=True)
+
+    def __str__(self):
+        return f"{self.shift_code} - {self.name}"
