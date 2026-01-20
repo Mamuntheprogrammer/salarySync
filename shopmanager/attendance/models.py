@@ -16,6 +16,9 @@ class Attendance(BaseModel):
     def __str__(self):
         return f"{self.employee} - {self.date}"
 
+    class Meta:
+        unique_together = ('employee', 'date')
+
 
 class BreakRecord(BaseModel):
     attendance = models.ForeignKey(Attendance, related_name='breaks', on_delete=models.CASCADE)

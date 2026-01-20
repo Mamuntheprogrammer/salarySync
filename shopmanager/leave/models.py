@@ -2,7 +2,7 @@
 
 # Create your models here.
 from django.db import models
-from employee.models import Employee
+# from employee.models import Employee  <-- Removed to fix circular import
 from company.models import BusinessArea
 from core.models import BaseModel
 
@@ -27,22 +27,34 @@ class HolidayCalendar(BaseModel):
 
 
 class EmployeeLeaveQuota(BaseModel):
-    employee = models.ForeignKey(Employee, on_delete=models.CASCADE)
+    employee = models.ForeignKey('employee.Employee', on_delete=models.CASCADE)
     leave_type = models.ForeignKey(LeaveType, on_delete=models.CASCADE)
+    year = models.IntegerField(default=2024)
     allocated = models.IntegerField(default=0)
     used = models.IntegerField(default=0)
 
     def remaining(self):
         return self.allocated - self.used
 
+    class Meta:
+        unique_together = ('employee', 'leave_type', 'year')
+
 
 class LeaveRequest(BaseModel):
-    employee = models.ForeignKey(Employee, on_delete=models.CASCADE)
+    employee = models.ForeignKey('employee.Employee', on_delete=models.CASCADE)
     leave_type = models.ForeignKey(LeaveType, on_delete=models.SET_NULL, null=True)
     start_date = models.DateField()
     end_date = models.DateField()
     reason = models.TextField(blank=True)
-    approved = models.BooleanField(default=False)
+    
+    STATUS_CHOICES = [
+        ('PENDING', 'Pending'),
+        ('APPROVED', 'Approved'),
+        ('REJECTED', 'Rejected'),
+        ('CANCELLED', 'Cancelled'),
+    ]
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING')
+    # approved = models.BooleanField(default=False)  <-- Removed in favor of status
 
     def __str__(self):
         return f"Leave {self.employee} ({self.start_date} - {self.end_date})"
@@ -59,8 +71,9 @@ class Shift(models.Model):
     shift_code = models.CharField(max_length=20, unique=True)
     name = models.CharField(max_length=100)
 
-    start_date = models.DateField()
-    end_date = models.DateField(null=True, blank=True)
+    # Removed start_date/end_date to make Shift a pure definition
+    # start_date = models.DateField()
+    # end_date = models.DateField(null=True, blank=True)
 
     start_time = models.TimeField()
     end_time = models.TimeField()
