@@ -48,10 +48,11 @@ class CalendarService:
         """
         day_of_week = check_date.weekday()
         
-        # 1. Employee Specific
-        has_emp_config = session.query(WeeklyHoliday).filter_by(employee_id=employee.id).count() > 0
-        if has_emp_config:
-            return session.query(WeeklyHoliday).filter_by(employee_id=employee.id, day_of_week=day_of_week).count() > 0
+        # 1. Shift Specific (Replaces Employee Specific)
+        if employee.shift_id:
+            has_shift_config = session.query(WeeklyHoliday).filter_by(shift_id=employee.shift_id).count() > 0
+            if has_shift_config:
+                return session.query(WeeklyHoliday).filter_by(shift_id=employee.shift_id, day_of_week=day_of_week).count() > 0
             
         # 2. Business Area
         has_ba_config = session.query(WeeklyHoliday).filter_by(business_area_id=employee.business_area_id).count() > 0
@@ -106,12 +107,15 @@ class CalendarService:
         for h in ba_hols: holiday_dates[h.date] = h
         
         # Weekly Config
-        emp_week_days = [w.day_of_week for w in session.query(WeeklyHoliday).filter_by(employee_id=employee.id).all()]
+        shift_week_days = []
+        if employee.shift_id:
+            shift_week_days = [w.day_of_week for w in session.query(WeeklyHoliday).filter_by(shift_id=employee.shift_id).all()]
+            
         ba_week_days = [w.day_of_week for w in session.query(WeeklyHoliday).filter_by(business_area_id=employee.business_area_id).all()]
         comp_week_days = [w.day_of_week for w in session.query(WeeklyHoliday).filter_by(company_id=employee.company_id).all()]
         
         effective_week_days = []
-        if emp_week_days: effective_week_days = emp_week_days
+        if shift_week_days: effective_week_days = shift_week_days
         elif ba_week_days: effective_week_days = ba_week_days
         elif comp_week_days: effective_week_days = comp_week_days
         

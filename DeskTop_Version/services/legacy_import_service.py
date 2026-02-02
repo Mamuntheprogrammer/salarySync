@@ -5,69 +5,80 @@ from database import get_db_session
 from models import (
     Employee, Shift, Attendance, Company, BusinessArea, 
     Designation, DesignationSubcategory, WeeklyHoliday, 
-    LeaveQuota, HolidayCalendar, Base
+    LeaveQuota, HolidayCalendar, ShortLeave, Base
 )
 import os
 
 class LegacyImportService:
     
     TABLE_SCHEMAS = {
-        "employees": {
-            "headers": ["attendance_code", "full_name", "joining_date", "salary_base", "company_code", "business_area_code", "designation_name", "subcategory_name", "shift_name", "custom_shift_start", "custom_shift_end", "is_active"],
-            "dummy": ["100001", "John Doe", "2025-01-01", 50000, "COMP01", "BA01", "Manager", "Senior", "General Shift", "09:00:00", "18:00:00", True]
-        },
-        "attendance": {
-            "headers": ["attendance_code", "date", "clock_in", "clock_out"],
-            "dummy": ["100001", "2025-01-01", "09:05:00", "18:10:00"]
-        },
-        "shifts": {
-            "headers": ["name", "start_time", "end_time", "late_allowance_minutes"],
-            "dummy": ["General Shift", "09:00:00", "18:00:00", 15]
-        },
-        "designations": {
-            "headers": ["name"],
-            "dummy": ["Manager"]
-        },
-        "designation_subcategories": {
-            "headers": ["designation_name", "name"],
-            "dummy": ["Manager", "Senior"]
-        },
         "companies": {
-            "headers": ["code", "name"],
-            "dummy": ["COMP01", "Tech Corp"]
+            "headers": ['code', 'name'],
+            "dummy": [1000, 'APL']
         },
         "business_areas": {
-            "headers": ["company_code", "code", "name"],
-            "dummy": ["COMP01", "BA01", "Headquarters"]
+            "headers": ['company_code', 'code', 'name'],
+            "dummy": [1000, 10, 'Dhaka']
+        },
+        "designations": {
+            "headers": ['name'],
+            "dummy": ['Manager']
+        },
+        "designation_subcategories": {
+            "headers": ['designation_name', 'name'],
+            "dummy": ['Manager', 'Level-1']
+        },
+        "shifts": {
+            "headers": ['name', 'start_time', 'end_time', 'late_allowance_minutes'],
+            "dummy": ['Morning-1', '08:00 AM', '05:00 PM', 10]
+        },
+        "employees": {
+            "headers": ['attendance_code', 'full_name', 'joining_date', 'salary_base', 'company_code', 'business_area_code', 'designation_name', 'subcategory_name', 'shift_name', 'custom_shift_start', 'custom_shift_end', 'is_active'],
+            "dummy": [500001, 'Mehedi', '2022-05-12', 10000, 1000, 10, 'Manager', 'Level-1', 'Morning-1', None, None, True]
+        },
+        "attendance": {
+            "headers": ['attendance_code', 'date', 'clock_in', 'clock_out'],
+            "dummy": [500001, '2026-01-01', '10:21 AM', '08:45 PM']
         },
         "weekly_holidays": {
-            "headers": ["day_of_week", "company_code", "business_area_code", "attendance_code"],
-            "dummy": ["Sunday", "COMP01", "BA01", ""]
+            "headers": ['day_of_week', 'company_code', 'business_area_code', 'shift_name'],
+            "dummy": ['Friday', 1000, 10, 'Morning-1']
         },
         "leave_quotas": {
-            "headers": ["year", "leave_type", "quota_limit", "company_code", "business_area_code"],
-            "dummy": [2025, "Annual", 14, "COMP01", "BA01"]
+            "headers": ['year', 'leave_type', 'quota_limit', 'company_code', 'business_area_code'],
+            "dummy": [2026, 'Annual', 14, 1000, 10]
         },
         "holiday_calendar": {
-            "headers": ["date", "description", "is_ot_eligible", "year", "type", "company_code", "business_area_code"],
-            "dummy": ["2025-12-25", "Christmas", True, 2025, "Festival", "COMP01", ""]
-        }
+            "headers": ['date', 'description', 'is_ot_eligible', 'year', 'type', 'company_code', 'business_area_code'],
+            "dummy": ['2026-01-15', 'Election ', False, 2026, 'Govment', 1000, 10]
+        },
+        "short_leaves": {
+            "headers": ['attendance_code', 'date', 'start_time', 'end_time', 'reason', 'status'],
+            "dummy": [500001, '2026-01-03', '10:00 AM', '12:00 PM', 'Personal', 'Approved']
+        },
     }
 
     @staticmethod
-    def generate_template(table_type, output_path):
-        schema = LegacyImportService.TABLE_SCHEMAS.get(table_type)
-        if not schema:
-            raise ValueError(f"Unknown table type: {table_type}")
-            
+    def generate_template(table_types, output_path):
         wb = openpyxl.Workbook()
-        ws = wb.active
-        ws.title = table_type
+        # Remove default sheet
+        default_sheet = wb.active
+        wb.remove(default_sheet)
         
-        # Headers
-        ws.append(schema["headers"])
-        # Dummy Data
-        ws.append(schema["dummy"])
+        for table_type in table_types:
+            schema = LegacyImportService.TABLE_SCHEMAS.get(table_type)
+            if not schema:
+                continue
+                
+            ws = wb.create_sheet(title=table_type)
+            # Headers
+            ws.append(schema["headers"])
+            # Dummy Data
+            ws.append(schema["dummy"])
+            
+        if not wb.sheetnames:
+             # Fallback if no valid tables
+             wb.create_sheet("Empty")
         
         wb.save(output_path)
         return output_path
@@ -76,11 +87,15 @@ class LegacyImportService:
     def import_table_data(file_path, table_type):
         session = get_db_session()
         wb = openpyxl.load_workbook(file_path, data_only=True)
-        ws = wb.active # Assume data is in the first/active sheet
+        
+        if table_type not in wb.sheetnames:
+             return 0, [f"Sheet '{table_type}' not found in workbook."]
+             
+        ws = wb[table_type]
         
         rows = list(ws.iter_rows(values_only=True))
         if not rows:
-            return 0, ["Empty file"]
+            return 0, ["Empty sheet"]
             
         headers = [str(h).strip().lower() for h in rows[0] if h]
         data_rows = rows[1:]
@@ -152,8 +167,10 @@ class LegacyImportService:
     @staticmethod
     def _import_companies(session, data):
         code = str(data.get('code')).strip()
+        if not code or code.lower() == 'none': return False
+        
         name = data.get('name')
-        if not code or not name: raise ValueError("Missing code or name")
+        if not name: raise ValueError("Missing name")
         
         company = session.query(Company).filter_by(code=code).first()
         if not company:
@@ -167,6 +184,8 @@ class LegacyImportService:
     def _import_business_areas(session, data):
         comp_code = str(data.get('company_code')).strip()
         code = str(data.get('code')).strip()
+        if not code or code.lower() == 'none': return False
+        
         name = data.get('name')
         
         company = session.query(Company).filter_by(code=comp_code).first()
@@ -183,7 +202,7 @@ class LegacyImportService:
     @staticmethod
     def _import_designations(session, data):
         name = data.get('name')
-        if not name: raise ValueError("Missing name")
+        if not name or str(name).lower() == 'none': return False
         
         desig = session.query(Designation).filter_by(name=name).first()
         if not desig:
@@ -194,6 +213,8 @@ class LegacyImportService:
     @staticmethod
     def _import_designation_subcategories(session, data):
         des_name = data.get('designation_name')
+        if not des_name or str(des_name).lower() == 'none': return False
+        
         sub_name = data.get('name')
         
         desig = session.query(Designation).filter_by(name=des_name).first()
@@ -209,11 +230,11 @@ class LegacyImportService:
     @staticmethod
     def _import_shifts(session, data):
         name = data.get('name')
+        if not name or str(name).lower() == 'none': return False
+        
         start = LegacyImportService._parse_time(data.get('start_time'))
         end = LegacyImportService._parse_time(data.get('end_time'))
         late = int(data.get('late_allowance_minutes') or 15)
-        
-        if not name: raise ValueError("Missing shift name")
         
         shift = session.query(Shift).filter_by(name=name).first()
         if not shift:
@@ -228,12 +249,21 @@ class LegacyImportService:
 
     @staticmethod
     def _import_employees(session, data):
-        code = str(data.get('attendance_code')).strip()
-        if not code: raise ValueError("Missing attendance code")
+        code_raw = data.get('attendance_code')
+        if code_raw is None: 
+            return False # Skip empty rows
+            
+        code = str(code_raw).strip()
+        if not code or code.lower() == 'none': 
+            raise ValueError("Invalid attendance code")
+
+        full_name = data.get('full_name')
         
         emp = session.query(Employee).filter_by(attendance_code=code).first()
         if not emp:
-            emp = Employee(attendance_code=code, full_name=data.get('full_name', 'Unknown'))
+            if not full_name:
+                raise ValueError(f"Missing full_name for new employee code {code}")
+            emp = Employee(attendance_code=code, full_name=full_name)
             session.add(emp)
             
         emp.full_name = data.get('full_name', emp.full_name)
@@ -282,10 +312,13 @@ class LegacyImportService:
 
     @staticmethod
     def _import_attendance(session, data):
-        code = str(data.get('attendance_code')).strip()
+        code_raw = data.get('attendance_code')
+        if not code_raw or str(code_raw).lower() == 'none': return False
+            
+        code = str(code_raw).strip()
         date_val = LegacyImportService._parse_date(data.get('date'))
         
-        if not code or not date_val: raise ValueError("Missing code or date")
+        if not date_val: raise ValueError("Missing date")
         
         emp = session.query(Employee).filter_by(attendance_code=code).first()
         if not emp: raise ValueError(f"Employee {code} not found")
@@ -310,14 +343,13 @@ class LegacyImportService:
 
     @staticmethod
     def _import_weekly_holidays(session, data):
-        # Reset Logic? Or Append?
-        # Typically Weekly Holiday is per company/BA/Employee.
-        # This table is tricky because it defines *which* days.
-        
+        day_raw = data.get('day_of_week')
+        if not day_raw or str(day_raw).lower() == 'none': return False
+
         company_code = str(data.get('company_code', '')).strip()
         ba_code = str(data.get('business_area_code', '')).strip()
-        emp_code = str(data.get('attendance_code', '')).strip()
-        day_str = str(data.get('day_of_week')).strip().title()
+        shift_name = data.get('shift_name')
+        day_str = str(day_raw).strip().title()
         
         days_map = {"Monday": 0, "Tuesday": 1, "Wednesday": 2, "Thursday": 3, "Friday": 4, "Saturday": 5, "Sunday": 6}
         day_num = days_map.get(day_str)
@@ -325,12 +357,13 @@ class LegacyImportService:
             if day_str.isdigit() and 0 <= int(day_str) <= 6:
                 day_num = int(day_str)
             else:
+                return False # specific logic: invalid day -> skip? or error? Let's skip if strictly invalid/empty row. But user said invalid day error. If row is empty, day_str is "None". Checked above. if it's "InvalidDay" raise error.
                 raise ValueError(f"Invalid day: {day_str}")
         
         # Verify entities
         comp_id = None
         ba_id = None
-        emp_id = None
+        shift_id = None
         
         if company_code:
             c = session.query(Company).filter_by(code=company_code).first()
@@ -340,9 +373,9 @@ class LegacyImportService:
              b = session.query(BusinessArea).filter_by(code=ba_code, company_id=comp_id).first()
              if b: ba_id = b.id
              
-        if emp_code:
-            e = session.query(Employee).filter_by(attendance_code=emp_code).first()
-            if e: emp_id = e.id
+        if shift_name:
+            s = session.query(Shift).filter_by(name=shift_name).first()
+            if s: shift_id = s.id
             
         # Check existing to avoid dupes
         q = session.query(WeeklyHoliday).filter_by(day_of_week=day_num)
@@ -352,18 +385,21 @@ class LegacyImportService:
         if ba_id: q = q.filter_by(business_area_id=ba_id)
         else: q = q.filter(WeeklyHoliday.business_area_id == None)
         
-        if emp_id: q = q.filter_by(employee_id=emp_id)
-        else: q = q.filter(WeeklyHoliday.employee_id == None)
+        if shift_id: q = q.filter_by(shift_id=shift_id)
+        else: q = q.filter(WeeklyHoliday.shift_id == None)
         
         if not q.first():
-            wh = WeeklyHoliday(day_of_week=day_num, company_id=comp_id, business_area_id=ba_id, employee_id=emp_id)
+            wh = WeeklyHoliday(day_of_week=day_num, company_id=comp_id, business_area_id=ba_id, shift_id=shift_id)
             session.add(wh)
             
         return True
 
     @staticmethod
     def _import_leave_quotas(session, data):
-        year = int(data.get('year') or datetime.now().year)
+        year_val = data.get('year')
+        if not year_val or str(year_val).lower() == 'none': return False
+
+        year = int(year_val)
         l_type = data.get('leave_type')
         limit = float(data.get('quota_limit') or 0)
         company_code = str(data.get('company_code', '')).strip()
@@ -399,7 +435,10 @@ class LegacyImportService:
 
     @staticmethod
     def _import_holiday_calendar(session, data):
-        date_val = LegacyImportService._parse_date(data.get('date'))
+        date_raw = data.get('date')
+        if not date_raw or str(date_raw).lower() == 'none': return False
+
+        date_val = LegacyImportService._parse_date(date_raw)
         desc = data.get('description')
         if not date_val or not desc: raise ValueError("Missing date or description")
         
@@ -409,10 +448,6 @@ class LegacyImportService:
         
         company_code = str(data.get('company_code', '')).strip() or None
         ba_code = str(data.get('business_area_code', '')).strip() or None
-        
-        # Check existing
-        # Holiday Calendar table in models.py uses 'company_code' string directly, NOT ID.
-        # And 'business_area_code' string.
         
         h = session.query(HolidayCalendar).filter_by(date=date_val, company_code=company_code, business_area_code=ba_code).first()
         if not h:
@@ -430,5 +465,43 @@ class LegacyImportService:
             h.description = desc
             h.is_ot_eligible = is_ot
             h.type = h_type
+            
+        return True
+
+    @staticmethod
+    def _import_short_leaves(session, data):
+        code_raw = data.get('attendance_code')
+        if not code_raw or str(code_raw).lower() == 'none': return False
+        
+        code = str(code_raw).strip()
+        date_val = LegacyImportService._parse_date(data.get('date'))
+        start = LegacyImportService._parse_time(data.get('start_time'))
+        end = LegacyImportService._parse_time(data.get('end_time'))
+        
+        if not date_val or not start or not end: 
+            raise ValueError("Missing date, start_time or end_time")
+            
+        emp = session.query(Employee).filter_by(attendance_code=code).first()
+        if not emp: raise ValueError(f"Employee {code} not found")
+        
+        reason = data.get('reason', '')
+        status = data.get('status', 'Pending').capitalize()
+        if status not in ['Pending', 'Approved', 'Rejected']: status = 'Pending'
+        
+        sl = session.query(ShortLeave).filter_by(employee_id=emp.id, date=date_val, start_time=start).first()
+        if not sl:
+            sl = ShortLeave(
+                employee_id=emp.id,
+                date=date_val,
+                start_time=start,
+                end_time=end,
+                reason=reason,
+                status=status
+            )
+            session.add(sl)
+        else:
+            sl.end_time = end
+            sl.reason = reason
+            sl.status = status
             
         return True

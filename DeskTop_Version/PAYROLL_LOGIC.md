@@ -10,10 +10,23 @@ $$
 \text{Net Salary} = \text{Gross Salary} - \text{Deductions} + \text{Additions}
 $$
 
-Where:
-- **Gross Salary** = Employee's Base Salary
-- **Deductions** = Late Penalty + Short Leave Deduction + Absent Deduction
 - **Additions** = Overtime Pay + Holiday Overtime Pay
+
+---
+
+## Payroll Configuration Rules
+
+Below are the adjustable settings in the **Payroll Config Manager** and how they impact the calculation:
+
+| Setting | Type | Description | Effect on Formula |
+| :--- | :--- | :--- | :--- |
+| **Overtime Rate** | Multiplier | Rate for regular overtime hours. | $\text{OT Pay} = \text{OT Hours} \times \text{Hourly Rate} \times \textbf{Multiplier}$ |
+| **Holiday OT Rate** | Multiplier | Rate for overtime on holidays/weekends. | $\text{Hol. OT Pay} = \text{Hol. OT Hours} \times \text{Hourly Rate} \times \textbf{Multiplier}$ |
+| **Late Deduction** | Multiplier | Deduction rate for late hours. | $\text{Late Ded.} = \text{Late Hours} \times \text{Hourly Rate} \times \textbf{Multiplier}$ |
+| **Short Leave Ded.** | Multiplier | Deduction rate for short leave hours. | $\text{Short Lv Ded.} = \text{Short Lv Hours} \times \text{Hourly Rate} \times \textbf{Multiplier}$ |
+| **Days in Month** | Divisor | Fixed number of days to divide Base Salary. | $\text{Daily Rate} = \text{Base Salary} / \textbf{Divisor}$ |
+| **Use Actual Days** | Logic | If enabled, uses the actual days in the calendar month (e.g., 28, 30, 31). | Overrides "Days in Month" with actual count (e.g. 30 in April, 31 in May). |
+| **Late Days Rule** | Threshold | Number of late days triggering a 1-day penalty. | $\text{Penalty Days} = \lfloor \text{Total Late Days} / \textbf{Threshold} \rfloor$ |
 
 ---
 
@@ -64,6 +77,17 @@ $$
 \text{Short Leave Deduction} = \text{Total Short Leave Hours} \times \text{Hourly Rate} \times \text{Short Leave Multiplier}
 $$
 
+#### D. Late Days Penalty (New)
+In addition to hourly deductions, a separate penalty applies if the employee exceeds a threshold of late days.
+$$
+\text{Penalty Days} = \lfloor \frac{\text{Total Late Days}}{\text{Threshold}} \rfloor
+$$
+$$
+\text{Late Days Penalty Deduction} = \text{Penalty Days} \times \text{Daily Rate}
+$$
+
+*   **Threshold**: Configurable (e.g., Every 3 Late Days = 1 Day Salary Deduction).
+
 ### 4. Additions (Overtime)
 
 #### A. Regular Overtime
@@ -89,16 +113,22 @@ $$
 *   **Month**: January (30 Days Calculation Base)
 *   **Working Days**: 25
 *   **Employee Attendance**: Present for 20 Working Days.
-*   **Late**: 2 Hours total.
+*   **Late**: 5 Days (Total 2 Hours late).
+*   **Late Days Rule**: Every 3 Late Days = 1 Day Penalty.
 
 **Steps**:
 1.  **Daily Rate**: $30,000 / 30 = 1,000$
 2.  **Hourly Rate**: $1,000 / 8 = 125$
 3.  **Absent Days**: $25 - 20 = 5$ Days.
 4.  **Absent Deduction**: $5 \times 1,000 = 5,000$
-5.  **Late Deduction**: $2 \times 125 \times 1.0 = 250$
+5.  **Late Hourly Deduction**: $2 \text{ hours} \times 125 \times 1.0 = 250$
+6.  **Late Days Penalty**:
+    *   Late Days = 5
+    *   Threshold = 3
+    *   Penalty Days = $\lfloor 5 / 3 \rfloor = 1$ Day.
+    *   Deduction = $1 \times 1,000 = 1,000$
 
 **Net Salary**:
 $$
-30,000 - 5,000 (\text{Absent}) - 250 (\text{Late}) = \mathbf{24,750}
+30,000 - 5,000 (\text{Absent}) - 250 (\text{Late Hours}) - 1,000 (\text{Late Penalty}) = \mathbf{23,750}
 $$

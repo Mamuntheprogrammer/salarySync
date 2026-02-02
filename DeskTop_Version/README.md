@@ -2,6 +2,7 @@
 
 ## Overview
 AttenSync is a comprehensive desktop-based Human Resource Management System (HRMS) featuring a facial recognition attendance terminal and an administrative portal for managing employees, shifts, leave, and payroll.
+![System Diagram](Diagram.png)
 
 ## Prerequisites
 - **Python**: Version 3.10 or higher is recommended.

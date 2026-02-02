@@ -36,6 +36,7 @@ class PayrollService:
         total_holiday_ot_hours = 0.0
         total_short_leave_hours = 0.0
         
+        late_days_count = 0
         for att in attendance_records:
             total_short_leave_hours += att.short_leave_hours
             
@@ -47,6 +48,8 @@ class PayrollService:
                      present_days += 1
                 
                 total_late_hours += att.late_hours
+                if att.late_hours > 0:
+                     late_days_count += 1
                 total_ot_hours += att.overtime_hours
         
         # 3. Calculate Approved Leave Days (Full Day)
@@ -83,9 +86,18 @@ class PayrollService:
         late_mult = config.late_deduction_multiplier if config else 1.0
         sle_mult = config.short_leave_deduction_multiplier if config else 1.0
         days_in_month_calc = config.days_in_month_calculation if config else 30
+        use_actual_days = config.use_actual_days_in_month if config and hasattr(config, 'use_actual_days_in_month') else False
+        late_penalty_threshold = config.late_days_penalty_threshold if config and hasattr(config, 'late_days_penalty_threshold') else 0
         
         # Rate Calculation
-        daily_rate = employee.salary_base / days_in_month_calc
+        divisor = days_in_month_calc
+        if use_actual_days:
+            try:
+                divisor = calendar.monthrange(year, month)[1]
+            except:
+                pass # default to setting
+        
+        daily_rate = employee.salary_base / divisor
         hourly_rate = daily_rate / 8 
         
         # --- CALCULATION ---
@@ -94,6 +106,11 @@ class PayrollService:
         # Deductions
         late_deduction = total_late_hours * hourly_rate * late_mult
         
+        # New Late Days Penalty
+        late_penalty_deduction = 0.0
+        if late_penalty_threshold > 0:
+            pass
+
         short_leave_deduction = total_short_leave_hours * hourly_rate * sle_mult
         
         absent_deduction = absent_days * daily_rate
@@ -102,8 +119,13 @@ class PayrollService:
         ot_pay = total_ot_hours * hourly_rate * ot_mult
         holiday_ot_pay = total_holiday_ot_hours * hourly_rate * hot_mult
         
+        # Late Days Penalty Logic
+        if late_penalty_threshold > 0:
+            penalty_days = late_days_count // late_penalty_threshold
+            late_penalty_deduction = penalty_days * daily_rate
+            
         # Net
-        net_salary = gross_salary - late_deduction - short_leave_deduction - absent_deduction + ot_pay + holiday_ot_pay
+        net_salary = gross_salary - late_deduction - late_penalty_deduction - short_leave_deduction - absent_deduction + ot_pay + holiday_ot_pay
         
         return {
             "employee_name": employee.full_name,
@@ -113,6 +135,7 @@ class PayrollService:
             "absent_days": absent_days,
             "late_hours": round(total_late_hours, 2),
             "late_deduction": round(late_deduction, 2),
+            "late_days_penalty": round(late_penalty_deduction, 2), # New
             "short_leave_hours": round(total_short_leave_hours, 2),
             "short_leave_deduction": round(short_leave_deduction, 2),
             "absent_deduction": round(absent_deduction, 2),
@@ -120,5 +143,6 @@ class PayrollService:
             "ot_pay": round(ot_pay, 2),
             "holiday_ot_hours": round(total_holiday_ot_hours, 2),
             "holiday_ot_pay": round(holiday_ot_pay, 2),
-            "net_salary": round(net_salary, 2)
+            "net_salary": round(net_salary, 2),
+            "divisor_used": divisor # Return the divisor for UI
         }

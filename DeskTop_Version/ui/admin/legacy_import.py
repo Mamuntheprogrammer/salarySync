@@ -1,5 +1,5 @@
 from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton, 
-                               QLabel, QFileDialog, QMessageBox, QTextEdit, QGroupBox, QRadioButton, QButtonGroup)
+                               QLabel, QFileDialog, QMessageBox, QTextEdit, QGroupBox, QCheckBox)
 import os
 from services.legacy_import_service import LegacyImportService
 
@@ -8,16 +8,17 @@ class LegacyImportModule(QWidget):
         super().__init__()
         self.selected_file = None
         self.table_map = {
-            "Employee": "employees",
-            "Attendance": "attendance",
-            "Shift": "shifts",
-            "Designation": "designations",
-            "Designation Subcategory": "designation_subcategories",
             "Company": "companies",
             "Business Area": "business_areas",
+            "Designation": "designations",
+            "Designation Subcategory": "designation_subcategories",
+            "Shift": "shifts",
+            "Employee": "employees",
+            "Attendance": "attendance",
             "Weekly Holidays": "weekly_holidays",
             "Leave Quotas": "leave_quotas",
-            "Holiday Calendar": "holiday_calendar"
+            "Holiday Calendar": "holiday_calendar",
+            "Short Leave": "short_leaves"
         }
         self.init_ui()
         
@@ -27,21 +28,20 @@ class LegacyImportModule(QWidget):
         
         # Header
         layout.addWidget(QLabel("<h2>Data Import Module</h2>"))
-        layout.addWidget(QLabel("Select a table type, download the template, fill it, and upload."))
+        layout.addWidget(QLabel("Select tables, download the template (one file with multiple sheets), fill it, and upload."))
         
         # Table Selection
-        table_group = QGroupBox("Select Table to Import")
+        table_group = QGroupBox("Select Tables to Import")
         table_layout = QVBoxLayout()
-        self.radio_group = QButtonGroup(self)
         
-        # Create radio buttons
-        self.radios = []
-        for i, (label, key) in enumerate(self.table_map.items()):
-            rb = QRadioButton(label)
-            if i == 0: rb.setChecked(True) # Default first
-            self.radio_group.addButton(rb)
-            table_layout.addWidget(rb)
-            self.radios.append(rb)
+        # Create check boxes
+        self.checkboxes = []
+        # sort keys to maintain consistent order
+        for i, label in enumerate(self.table_map.keys()):
+            cb = QCheckBox(label)
+            if i == 0: cb.setChecked(True)
+            self.checkboxes.append(cb)
+            table_layout.addWidget(cb)
             
         table_group.setLayout(table_layout)
         layout.addWidget(table_group)
@@ -58,7 +58,7 @@ class LegacyImportModule(QWidget):
         action_layout.addWidget(self.btn_browse)
         
         # Cancel Button (clears selection)
-        self.btn_cancel = QPushButton("Cancel")
+        self.btn_cancel = QPushButton("Clear Selection")
         self.btn_cancel.clicked.connect(self.reset_state)
         action_layout.addWidget(self.btn_cancel)
         
@@ -82,30 +82,40 @@ class LegacyImportModule(QWidget):
         self.txt_log.setReadOnly(True)
         layout.addWidget(self.txt_log)
         
-    def get_selected_table_type(self):
-        for rb in self.radios:
-            if rb.isChecked():
-                return self.table_map.get(rb.text())
-        return None
+    def get_selected_table_types(self):
+        selected = []
+        for cb in self.checkboxes:
+            if cb.isChecked():
+                selected.append(self.table_map.get(cb.text()))
+        return selected
         
     def download_template(self):
-        table_type = self.get_selected_table_type()
-        if not table_type: return
+        # User requested ALL sheets to be present in the template regardless of selection
+        all_table_types = list(self.table_map.values())
         
         # Default to data folder if exists, else downloads
         default_dir = os.path.join(os.getcwd(), 'data')
         if not os.path.exists(default_dir):
             os.makedirs(default_dir)
             
-        default_path = os.path.join(default_dir, f"{table_type}_Template.xlsx")
+        default_path = os.path.join(default_dir, "Import_Template.xlsx")
         
         path, _ = QFileDialog.getSaveFileName(self, "Save Template", default_path, "Excel Files (*.xlsx)")
+        
         if path:
             try:
-                LegacyImportService.generate_template(table_type, path)
+                LegacyImportService.generate_template(all_table_types, path)
                 QMessageBox.information(self, "Success", f"Template saved to: {path}")
+                # Open folder
+                try:
+                    os.startfile(os.path.dirname(path))
+                except:
+                    pass
             except Exception as e:
-                QMessageBox.critical(self, "Error", f"Failed to save template: {e}")
+                # Get full traceback
+                import traceback
+                tb = traceback.format_exc()
+                QMessageBox.critical(self, "Error", f"Failed to save template: {e}\n\n{tb}")
 
     def browse_file(self):
         path, _ = QFileDialog.getOpenFileName(self, "Select Excel File", "", "Excel Files (*.xlsx)")
@@ -121,30 +131,44 @@ class LegacyImportModule(QWidget):
         self.lbl_file.setText("No file selected")
         self.btn_import.setEnabled(False)
         self.txt_log.clear()
+        for cb in self.checkboxes:
+            cb.setChecked(False)
         
     def run_import(self):
         if not self.selected_file: return
-        table_type = self.get_selected_table_type()
+        table_types = self.get_selected_table_types()
         
-        self.txt_log.append(f"Starting Import for {table_type}...")
+        if not table_types:
+             QMessageBox.warning(self, "No Selection", "Please select tables to import.")
+             return
+        
+        self.txt_log.append("Starting Import Process...")
         self.btn_import.setEnabled(False)
         self.btn_template.setEnabled(False)
         self.btn_browse.setEnabled(False)
         self.btn_cancel.setEnabled(False)
         self.repaint() # Force UI update
         
+        total_success = 0
+        total_errors = 0
+        
         try:
-            count, errors = LegacyImportService.import_table_data(self.selected_file, table_type)
-            
-            self.txt_log.append(f"\nImport Finished.\nSuccessfully Imported: {count}")
-            if errors:
-                self.txt_log.append("\nErrors / Warnings:")
-                for e in errors:
-                    self.txt_log.append(f"- {e}")
-            else:
-                self.txt_log.append("\nNo errors.")
+            for table_type in table_types:
+                self.txt_log.append(f"\n--- Importing {table_type} ---")
+                count, errors = LegacyImportService.import_table_data(self.selected_file, table_type)
                 
-            QMessageBox.information(self, "Import Complete", f"Import process finished.\nSuccess: {count}\nErrors: {len(errors)}")
+                self.txt_log.append(f"Imported: {count}")
+                if errors:
+                    self.txt_log.append("Errors / Warnings:")
+                    for e in errors:
+                        self.txt_log.append(f"- {e}")
+                    total_errors += len(errors)
+                else:
+                    self.txt_log.append("No errors.")
+                total_success += count
+            
+            self.txt_log.append(f"\nTotal Import Finished.\nTotal Success: {total_success}\nTotal Errors: {total_errors}")
+            QMessageBox.information(self, "Import Complete", f"Process finished.\nTotal Success: {total_success}\nTotal Errors: {total_errors}")
             
         except Exception as e:
             self.txt_log.append(f"Critical Error: {e}")

@@ -138,10 +138,12 @@ class HolidayCalendar(Base):
     type = Column(String(50), default="National") # National, Festival, etc.
     
     # Levels of granular control
-    company_code = Column(String(20), nullable=True) # Global usage within company code
-    business_area_code = Column(String(20), nullable=True) # Null means global/company wide? OR we strictly follow user request "maintain with business area"
-    # User said: "instead of company_id replace by business area"
-    # Also "any holydays could be ot_eligible so it could maintain individual or with business area"
+    company_id = Column(Integer, ForeignKey('companies.id'), nullable=True)
+    business_area_id = Column(Integer, ForeignKey('business_areas.id'), nullable=True)
+    
+    # Relationships
+    company = relationship("Company")
+    business_area = relationship("BusinessArea")
 
 class LeaveRequest(Base):
     __tablename__ = 'leave_requests'
@@ -167,12 +169,12 @@ class WeeklyHoliday(Base):
     
     company_id = Column(Integer, ForeignKey('companies.id'), nullable=True)
     business_area_id = Column(Integer, ForeignKey('business_areas.id'), nullable=True)
-    employee_id = Column(Integer, ForeignKey('employees.id'), nullable=True)
+    shift_id = Column(Integer, ForeignKey('shifts.id'), nullable=True)
     
     # Relationships
     company = relationship("Company")
     business_area = relationship("BusinessArea")
-    employee = relationship("Employee")
+    shift = relationship("Shift")
 
 class LeaveQuota(Base):
     __tablename__ = 'leave_quotas'
@@ -202,9 +204,11 @@ class PayrollConfig(Base):
     # Deductions
     late_deduction_multiplier = Column(Float, default=1.0) # x times hourly rate per hour late    
     short_leave_deduction_multiplier = Column(Float, default=1.0) # x times hourly rate per hour
+    late_days_penalty_threshold = Column(Integer, default=3) # e.g. 3 days late -> 1 day salary cut
     
     # Logic Settings
     calculate_salary_on_present_days = Column(Boolean, default=True) # If True, Pay = Daily Rate * Present Days. If False, Pay = Base - Deductions
+    use_actual_days_in_month = Column(Boolean, default=False) # If True, daily rate = Base / Actual Days
     days_in_month_calculation = Column(Integer, default=30) # Fixed 30 or actual? Fixed 30 is simpler.
 
     company = relationship("Company")

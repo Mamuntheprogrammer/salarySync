@@ -185,7 +185,7 @@ class InternalReportWidget(QWidget):
             cols = [
                 "Emp ID", "Name", "Company", "Business Area", 
                 "Total Days", "Working Days", "Present", "Absent", "Late Days",
-                "Working (h)", "Late (h)", "OT (h)", "Short Leave (h)", 
+                "Working (HH:MM)", "Late (HH:MM)", "OT (HH:MM)", "Short Leave (HH:MM)", 
                 "Leaves Taken", "Remaining Leave"
             ]
         elif self.mode == "report_month_wise_attendance":
@@ -228,6 +228,12 @@ class InternalReportWidget(QWidget):
             traceback.print_exc()
             QMessageBox.critical(self, "Error", f"Failed to generate report: {str(e)}")
             
+    def _fmt_duration(self, seconds):
+        if not seconds: return "00:00"
+        m, s = divmod(int(seconds), 60)
+        h, m = divmod(m, 60)
+        return f"{h:02d}:{m:02d}"
+
     def generate_daily(self, session, start, end):
         records = session.query(Attendance).filter(Attendance.date >= start, Attendance.date <= end).order_by(Attendance.date).all()
         
@@ -443,10 +449,10 @@ class InternalReportWidget(QWidget):
                 str(present_days),
                 str(absent_days),
                 str(late_days_count),
-                f"{total_work_seconds/3600:.2f}",
-                f"{total_late_seconds/3600:.2f}",
-                f"{total_ot_seconds/3600:.2f}",
-                f"{sl_seconds/3600:.2f}",
+                self._fmt_duration(total_work_seconds),
+                self._fmt_duration(total_late_seconds),
+                self._fmt_duration(total_ot_seconds),
+                self._fmt_duration(sl_seconds),
                 str(leaves_taken_days),
                 str(remaining)
             ]

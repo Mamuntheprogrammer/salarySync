@@ -125,17 +125,19 @@ class AdminDashboard(QWidget):
                 # Note: "Month Wise" is a tab inside Reports module, not a separate page key here.
             ],
             "Master Data": [
-                {"label": "Legacy Import", "key": "legacy_import"},
+                {"label": "Import Data", "key": "legacy_import"},
                 {"label": "Company Manager", "key": "companies"},
                 {"label": "Designation Manager", "key": "designations"},
                 {"label": "Shift Manager", "key": "shifts"},
                 {"label": "Holiday & Weekly Manager", "key": "calendars"},
                 {"label": "Leave Quotas", "key": "leave_quotas"},
+                {"label": "Short Leave Manager", "key": "short_leaves"},
             ],
             "System": [
                 {"label": "User Manager", "key": "users"},
+                {"label": "Payroll Config Manager", "key": "payroll_config"},
                 {"label": "Backup & Restore", "key": "backup"},
-                {"label": "Payroll Config", "key": "payroll"},
+                {"label": "Run Payroll", "key": "payroll"},
                 {"label": "Cloud Sync", "key": "cloud"},
             ]
         }
@@ -265,6 +267,10 @@ class AdminDashboard(QWidget):
         # Leave Quotas
         from .leave_quota_management import LeaveQuotaManagement
         self.pages["leave_quotas"] = LeaveQuotaManagement()
+
+        # Short Leaves
+        from .short_leave_management import ShortLeaveManagement
+        self.pages["short_leaves"] = ShortLeaveManagement()
         
         # Backup
         from .backup_settings import BackupSettings
@@ -273,6 +279,10 @@ class AdminDashboard(QWidget):
         # Cloud Sync
         from ui.setup.cloud_setup import CloudSetup
         self.pages["cloud"] = CloudSetup()
+
+        # Payroll Config
+        from .payroll_config_management import PayrollConfigManagement
+        self.pages["payroll_config"] = PayrollConfigManagement()
         
         # Users 
         if self.current_user.role == "admin":

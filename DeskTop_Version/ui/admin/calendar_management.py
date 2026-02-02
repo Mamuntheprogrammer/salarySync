@@ -1,10 +1,10 @@
 from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton, 
                              QLabel, QTableWidget, QTableWidgetItem, QDialog, 
                              QLineEdit, QFormLayout, QMessageBox, QHeaderView, QComboBox, 
-                             QDateEdit, QCheckBox, QTabWidget, QSpinBox, QFileDialog)
+                             QDateEdit, QCheckBox, QTabWidget, QSpinBox, QFileDialog, QRadioButton, QButtonGroup)
 from PyQt6.QtCore import QDate, Qt
 from database import get_db_session
-from models import HolidayCalendar, WeeklyHoliday, BusinessArea, Employee
+from models import HolidayCalendar, WeeklyHoliday, BusinessArea, Employee, Company
 from datetime import datetime
 import csv
 
@@ -78,8 +78,8 @@ class CalendarManagement(QWidget):
             self.hol_table.setItem(row, 1, QTableWidgetItem(h.description))
             self.hol_table.setItem(row, 2, QTableWidgetItem(h.type))
             
-            comp_val = h.company_code if h.company_code else "Global"
-            ba_val = h.business_area_code if h.business_area_code else "All"
+            comp_val = h.company.name if h.company else "Global"
+            ba_val = h.business_area.name if h.business_area else "All"
             
             self.hol_table.setItem(row, 3, QTableWidgetItem(comp_val))
             self.hol_table.setItem(row, 4, QTableWidgetItem(ba_val))
@@ -155,7 +155,7 @@ class CalendarManagement(QWidget):
             QMessageBox.critical(self, "Error", f"Failed to import: {str(e)}")
 
     def add_holiday_dialog(self, holiday_obj=None):
-        session = get_db_session() # Fix: Initialize session
+        session = get_db_session()
         dialog = QDialog(self)
         dialog.setWindowTitle("Add Holiday")
         form = QFormLayout(dialog)
@@ -172,13 +172,28 @@ class CalendarManagement(QWidget):
         
         ot_input = QCheckBox("OT Eligible")
         
-        comp_input = QLineEdit()
-        comp_input.setPlaceholderText("Company Code (Max 4 chars)")
-        comp_input.setMaxLength(4) # Enforce UI limit
+        # Scope Selection
+        comp_input = QComboBox()
+        comp_input.addItem("All Companies (Global)", None)
+        comps = session.query(Company).all()
+        for c in comps: comp_input.addItem(c.name, c.id)
         
-        ba_input = QLineEdit()
-        ba_input.setPlaceholderText("Business Area Code (Max 2 chars)")
-        ba_input.setMaxLength(2) # Enforce UI limit
+        ba_input = QComboBox()
+        ba_input.addItem("All Business Areas", None)
+        ba_input.setEnabled(False)
+        
+        def on_comp_change():
+            ba_input.clear()
+            ba_input.addItem("All Business Areas", None)
+            ba_input.setEnabled(False)
+            
+            comp_id = comp_input.currentData()
+            if comp_id:
+                bas = session.query(BusinessArea).filter_by(company_id=comp_id).all()
+                for ba in bas: ba_input.addItem(ba.name, ba.id)
+                ba_input.setEnabled(True)
+                
+        comp_input.currentIndexChanged.connect(on_comp_change)
         
         # Pre-fill if editing
         if holiday_obj:
@@ -188,18 +203,22 @@ class CalendarManagement(QWidget):
             type_input.setCurrentText(holiday_obj.type)
             ot_input.setChecked(holiday_obj.is_ot_eligible)
             
-            if holiday_obj.company_code:
-                comp_input.setText(holiday_obj.company_code)
+            if holiday_obj.company_id:
+                index = comp_input.findData(holiday_obj.company_id)
+                if index >= 0: comp_input.setCurrentIndex(index)
                 
-            if holiday_obj.business_area_code:
-                ba_input.setText(holiday_obj.business_area_code)
+            # Trigger logic to fill BA
+            if holiday_obj.business_area_id:
+                # Wait for BA combo to populate
+                index = ba_input.findData(holiday_obj.business_area_id)
+                if index >= 0: ba_input.setCurrentIndex(index)
         
         form.addRow("Date:", date_input)
         form.addRow("Description:", desc_input)
         form.addRow("Type:", type_input)
         form.addRow("OT Eligible:", ot_input)
-        form.addRow("Company Code:", comp_input)
-        form.addRow("Business Area Code:", ba_input)
+        form.addRow("Company:", comp_input)
+        form.addRow("Business Area:", ba_input)
         
         btn_save = QPushButton("Save")
         def save():
@@ -207,46 +226,42 @@ class CalendarManagement(QWidget):
                 QMessageBox.warning(dialog, "Warning", "Description is required")
                 return
             
-            comp_code = comp_input.text().strip() or None
-            ba_code = ba_input.text().strip() or None
-            
-            # Additional Validation (redundant with setMaxLength but good for logic)
-            if comp_code and len(comp_code) > 4:
-                QMessageBox.warning(dialog, "Invalid Input", "Company Code cannot exceed 4 characters.")
-                return
-            if ba_code and len(ba_code) > 2:
-                QMessageBox.warning(dialog, "Invalid Input", "Business Area Code cannot exceed 2 characters.")
-                return
+            comp_id = comp_input.currentData()
+            ba_id = ba_input.currentData()
 
             h_date = date_input.date().toPyDate()
             year = h_date.year
             
-            h = HolidayCalendar(
-                date=h_date,
-                year=year,
-                description=desc_input.text(),
-                type=type_input.currentText(),
-                is_ot_eligible=ot_input.isChecked(),
-                company_code=comp_code,
-                business_area_code=ba_code
-            )
+            # Check for existing holiday on same date/scope to avoid duplicates?
+            # For now, just save.
+            
+            if holiday_obj:
+                # Update existing
+                holiday_obj.date = h_date
+                holiday_obj.year = year
+                holiday_obj.description = desc_input.text()
+                holiday_obj.type = type_input.currentText()
+                holiday_obj.is_ot_eligible = ot_input.isChecked()
+                holiday_obj.company_id = comp_id
+                holiday_obj.business_area_id = ba_id
+            else:
+                h = HolidayCalendar(
+                    date=h_date,
+                    year=year,
+                    description=desc_input.text(),
+                    type=type_input.currentText(),
+                    is_ot_eligible=ot_input.isChecked(),
+                    company_id=comp_id,
+                    business_area_id=ba_id
+                )
+                session.add(h)
+            
             try:
-                if holiday_obj:
-                    # Update existing
-                    holiday_obj.date = h_date
-                    holiday_obj.year = year
-                    holiday_obj.description = desc_input.text()
-                    holiday_obj.type = type_input.currentText()
-                    holiday_obj.is_ot_eligible = ot_input.isChecked()
-                    holiday_obj.company_code = comp_code
-                    holiday_obj.business_area_code = ba_code
-                else:
-                    session.add(h)
-                
                 session.commit()
                 dialog.accept()
                 self.load_holidays()
             except Exception as e:
+                session.rollback()
                 QMessageBox.critical(dialog, "Error", str(e))
                 
         btn_save.clicked.connect(save)
@@ -300,9 +315,9 @@ class CalendarManagement(QWidget):
             if r.business_area:
                 scope = "Business Area"
                 target = r.business_area.name
-            elif r.employee:
-                scope = "Employee"
-                target = r.employee.full_name
+            elif r.shift:
+                scope = "Shift"
+                target = r.shift.name
             
             self.weekly_table.setItem(row, 0, QTableWidgetItem(scope))
             self.weekly_table.setItem(row, 1, QTableWidgetItem(days[r.day_of_week]))
@@ -322,9 +337,23 @@ class CalendarManagement(QWidget):
         days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
         day_input.addItems(days)
         
-        from models import Company
+        from models import Company, Shift
         session = get_db_session()
         
+        # Scope Selection
+        scope_layout = QHBoxLayout()
+        rb_org = QRadioButton("Organization (Company/BA)")
+        rb_shift = QRadioButton("Shift")
+        rb_org.setChecked(True)
+        
+        scope_group = QButtonGroup(dialog)
+        scope_group.addButton(rb_org)
+        scope_group.addButton(rb_shift)
+        
+        scope_layout.addWidget(rb_org)
+        scope_layout.addWidget(rb_shift)
+        
+        # Inputs
         comp_input = QComboBox()
         comp_input.addItem("All Companies (Global)", None)
         comps = session.query(Company).all()
@@ -334,9 +363,20 @@ class CalendarManagement(QWidget):
         ba_input.addItem("All Business Areas", None)
         ba_input.setEnabled(False)
         
-        emp_input = QComboBox()
-        emp_input.addItem("All Employees", None)
-        emp_input.setEnabled(False)
+        shift_input = QComboBox()
+        shift_input.addItem("Select Shift...", None)
+        shifts = session.query(Shift).all()
+        for s in shifts: shift_input.addItem(s.name, s.id)
+        shift_input.setEnabled(False) # Initially disabled
+        
+        def toggle_mode():
+            is_org = rb_org.isChecked()
+            comp_input.setEnabled(is_org)
+            ba_input.setEnabled(is_org and comp_input.currentData() is not None)
+            shift_input.setEnabled(not is_org)
+            
+        rb_org.toggled.connect(toggle_mode)
+        rb_shift.toggled.connect(toggle_mode)
         
         def on_comp_change():
             ba_input.clear()
@@ -348,46 +388,37 @@ class CalendarManagement(QWidget):
                 bas = session.query(BusinessArea).filter_by(company_id=comp_id).all()
                 for ba in bas: ba_input.addItem(ba.name, ba.id)
                 ba_input.setEnabled(True)
-            
-            emp_input.clear()
-            emp_input.addItem("All Employees", None)
-            emp_input.setEnabled(False)
-            
-        def on_ba_change():
-            emp_input.clear()
-            emp_input.addItem("All Employees", None)
-            emp_input.setEnabled(False)
-            
-            ba_id = ba_input.currentData()
-            if ba_id:
-                emps = session.query(Employee).filter_by(business_area_id=ba_id, is_active=True).all()
-                for e in emps: emp_input.addItem(f"{e.attendance_code} - {e.full_name}", e.id)
-                emp_input.setEnabled(True)
                 
         comp_input.currentIndexChanged.connect(on_comp_change)
-        ba_input.currentIndexChanged.connect(on_ba_change)
         
+        form.addRow("Mode:", scope_layout)
         form.addRow("Day:", day_input)
         form.addRow("Company:", comp_input)
         form.addRow("Business Area:", ba_input)
-        form.addRow("Employee:", emp_input)
+        form.addRow("Shift:", shift_input)
         
         btn_save = QPushButton("Save")
         def save():
             day_idx = day_input.currentIndex()
-            comp_id = comp_input.currentData()
-            ba_id = ba_input.currentData()
-            emp_id = emp_input.currentData()
             
-            # Validation: Must select at least Company? Or Global is allowed?
-            # User wants: "add company for each section".
-            # If nothing selected, maybe Global? Or specific to comp logic.
+            comp_id = None
+            ba_id = None
+            shift_id = None
+            
+            if rb_org.isChecked():
+                comp_id = comp_input.currentData()
+                ba_id = ba_input.currentData()
+            else:
+                shift_id = shift_input.currentData()
+                if not shift_id:
+                    QMessageBox.warning(dialog, "Missing Input", "Please select a shift.")
+                    return
                 
             w = WeeklyHoliday(
                 day_of_week=day_idx,
                 company_id=comp_id,
                 business_area_id=ba_id,
-                employee_id=emp_id
+                shift_id=shift_id
             )
             try:
                 session.add(w)
