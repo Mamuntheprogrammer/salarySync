@@ -2,12 +2,10 @@ PyQt6
 SQLAlchemy
 bcrypt
 openpyxl
-# google-api-python-client # Removed
-# google-auth-httplib2 # Removed
-# google-auth-oauthlib # Removed
 qrcode
 pillow
 reportlab
 psycopg2-binary
 opencv-python
-face-recognition
+matplotlib
+
