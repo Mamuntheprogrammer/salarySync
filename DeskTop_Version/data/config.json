@@ -1,0 +1,24 @@
+{
+    "company_name": "My Company",
+    "time_format": "12h",
+    "db_path": "E:\\attensync3\\data\\attensync_v3.db",
+    "theme": "Dark",
+    "backup_frequency": "daily",
+    "backup_location": "E:\\attensync3\\backups",
+    "backup": {
+        "enabled": true,
+        "frequency": "daily",
+        "location": "E:\\attensync3\\backups",
+        "last_backup_date": "2026-01-29"
+    },
+    "online_mode": false,
+    "cloud_sync": {
+        "enabled": true,
+        "last_sync": null
+    },
+    "remote_db": {
+        "connection_string": "",
+        "last_backup": null
+    },
+    "setup_complete": true
+}

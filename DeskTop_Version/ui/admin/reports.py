@@ -1,0 +1,557 @@
+from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton, 
+                             QLabel, QTableWidget, QTableWidgetItem, QDateEdit, 
+                             QHeaderView, QComboBox, QMessageBox, QFileDialog, QTabWidget)
+from PyQt6.QtCore import QDate, Qt
+from database import get_db_session
+from models import Attendance, Shift, Employee, ShortLeave, LeaveRequest, Company, BusinessArea, LeaveQuota
+from services.shift_service import ShiftService
+from services.calendar_service import CalendarService
+from config import Config
+from datetime import timedelta, datetime, time, date
+import csv
+from sqlalchemy import func
+
+class ReportsModule(QWidget):
+    def __init__(self):
+        super().__init__()
+        self.init_ui()
+
+    def init_ui(self):
+        layout = QVBoxLayout()
+        self.setLayout(layout)
+        
+        self.tabs = QTabWidget()
+        
+        # Tab 1: Master Summary
+        self.summary_tab = InternalReportWidget(default_mode="report_master_summary")
+        self.tabs.addTab(self.summary_tab, "Summary Report")
+        
+        # Tab 2: Month Wise Attendance
+        self.month_wise_tab = InternalReportWidget(default_mode="report_month_wise_attendance")
+        self.tabs.addTab(self.month_wise_tab, "Month Wise Attendance")
+        
+        layout.addWidget(self.tabs)
+
+class InternalReportWidget(QWidget):
+    def __init__(self, default_mode="report_master_summary"):
+        super().__init__()
+        self.mode = default_mode
+        self.init_ui()
+        
+    def init_ui(self):
+        layout = QVBoxLayout()
+        self.setLayout(layout)
+        
+        # Header Area
+        self.header_layout = QHBoxLayout()
+        
+        self.start_date = QDateEdit()
+        self.start_date.setCalendarPopup(True)
+        today = QDate.currentDate()
+        month_start = QDate(today.year(), today.month(), 1)
+        month_end = QDate(today.year(), today.month(), today.daysInMonth())
+
+        self.start_date = QDateEdit()
+        self.start_date.setCalendarPopup(True)
+        self.start_date.setDate(month_start)
+        
+        self.end_date = QDateEdit()
+        self.end_date.setCalendarPopup(True)
+        self.end_date.setDate(month_end)
+        
+        self.header_layout.addWidget(QLabel("From:"))
+        self.header_layout.addWidget(self.start_date)
+        self.header_layout.addWidget(QLabel("To:"))
+        self.header_layout.addWidget(self.end_date)
+        
+        # Filters
+        self.comp_filter = QComboBox()
+        self.comp_filter.addItem("All Companies", None)
+        self.ba_filter = QComboBox()
+        self.ba_filter.addItem("All Business Areas", None)
+        self.emp_filter = QComboBox()
+        self.emp_filter.addItem("All Employees", None)
+        
+        self.header_layout.addWidget(QLabel("Comp:"))
+        self.header_layout.addWidget(self.comp_filter)
+        self.header_layout.addWidget(QLabel("BA:"))
+        self.header_layout.addWidget(self.ba_filter)
+        self.header_layout.addWidget(QLabel("Emp:"))
+        self.header_layout.addWidget(self.emp_filter)
+        
+        session = get_db_session()
+        for c in session.query(Company).all():
+             self.comp_filter.addItem(c.name, c.id)
+             
+        self.comp_filter.currentIndexChanged.connect(self.load_bas)
+        self.ba_filter.currentIndexChanged.connect(self.load_emps)
+        
+        # Initial load of BAs/Emps
+        self.load_bas()
+        
+        btn_generate = QPushButton("Generate")
+        btn_generate.clicked.connect(self.generate_report)
+        self.header_layout.addWidget(btn_generate)
+        
+        btn_export = QPushButton("Export CSV")
+        btn_export.clicked.connect(self.export_csv)
+        self.header_layout.addWidget(btn_export)
+        
+        btn_reset = QPushButton("Reset Filters")
+        btn_reset.clicked.connect(self.reset_filters)
+        self.header_layout.addWidget(btn_reset)
+        
+        self.header_layout.addStretch()
+        layout.addLayout(self.header_layout)
+        
+        # Table
+        self.table = QTableWidget()
+        self.table.setAlternatingRowColors(True)
+        # Enable resizing
+        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
+        self.table.horizontalHeader().setStretchLastSection(True) 
+        layout.addWidget(self.table)
+        
+        # Initial Setup
+        self.setup_table_columns()
+        
+    def load_bas(self):
+        self.ba_filter.blockSignals(True)
+        self.ba_filter.clear()
+        self.ba_filter.addItem("All Business Areas", None)
+        
+        session = get_db_session()
+        comp_id = self.comp_filter.currentData()
+        
+        query = session.query(BusinessArea)
+        if comp_id:
+            query = query.filter_by(company_id=comp_id)
+        
+        for ba in query.all():
+            self.ba_filter.addItem(ba.name, ba.id)
+            
+        self.ba_filter.blockSignals(False)
+        self.load_emps()
+        
+    def reset_filters(self):
+        self.comp_filter.blockSignals(True)
+        self.comp_filter.setCurrentIndex(0)
+        self.comp_filter.blockSignals(False)
+        self.load_bas() # Will cascade reset others
+        
+        today = QDate.currentDate()
+        month_start = QDate(today.year(), today.month(), 1)
+        month_end = QDate(today.year(), today.month(), today.daysInMonth())
+        
+        self.start_date.setDate(month_start)
+        self.end_date.setDate(month_end)
+        
+    def load_emps(self):
+        self.emp_filter.blockSignals(True)
+        self.emp_filter.clear()
+        self.emp_filter.addItem("All Employees", None)
+        
+        session = get_db_session()
+        comp_id = self.comp_filter.currentData()
+        ba_id = self.ba_filter.currentData()
+        
+        query = session.query(Employee).filter_by(is_active=True)
+        if comp_id: query = query.filter_by(company_id=comp_id)
+        if ba_id: query = query.filter_by(business_area_id=ba_id)
+        
+        for e in query.all():
+            self.emp_filter.addItem(f"{e.attendance_code}-{e.full_name}", e.id)
+            
+        self.emp_filter.blockSignals(False)
+        
+    def set_mode(self, mode):
+        self.mode = mode
+        # Title update removed
+        self.setup_table_columns()
+        self.table.setRowCount(0) # Clear data
+        
+    def setup_table_columns(self):
+        if self.mode == "report_daily":
+            cols = ["Date", "Emp ID", "Name", "Shift", "In", "Out", "Status"]
+        elif self.mode == "report_monthly":
+            cols = ["Emp ID", "Name", "Month", "Present Days"]
+        elif self.mode == "report_leave":
+            cols = ["Date", "Emp ID", "Name", "Type", "Duration/Reason", "Status"]
+        elif self.mode == "report_late":
+            cols = [] # Report disabled
+        elif self.mode == "report_overtime":
+            cols = ["Date", "Emp ID", "Name", "Clock Out", "Shift End", "OT Duration (h)"]
+        elif self.mode == "report_master_summary":
+            cols = [
+                "Emp ID", "Name", "Company", "Business Area", 
+                "Total Days", "Working Days", "Present", "Absent", "Late Days",
+                "Working (h)", "Late (h)", "OT (h)", "Short Leave (h)", 
+                "Leaves Taken", "Remaining Leave"
+            ]
+        elif self.mode == "report_month_wise_attendance":
+            cols = ["Date", "Emp ID", "Name", "Company", "Business Area", "Shift", "In", "Out", "Status"]
+        else:
+            cols = []
+            
+        self.table.setColumnCount(len(cols))
+        self.table.setHorizontalHeaderLabels(cols)
+        
+    def generate_report(self):
+        start = self.start_date.date().toPyDate()
+        end = self.end_date.date().toPyDate()
+        session = get_db_session()
+        self.current_data = [] # For export
+        
+        self.table.setRowCount(0)
+        
+        try:
+            if self.mode == "report_daily":
+                self.generate_daily(session, start, end)
+            elif self.mode == "report_monthly":
+                self.generate_monthly(session, start, end)
+            elif self.mode == "report_leave":
+                self.generate_leave(session, start, end)
+            elif self.mode == "report_late":
+                self.generate_late(session, start, end)
+            elif self.mode == "report_overtime":
+                self.generate_overtime(session, start, end)
+            elif self.mode == "report_master_summary":
+                self.generate_master_summary(session, start, end)
+            elif self.mode == "report_month_wise_attendance":
+                self.generate_month_wise_attendance(session, start, end)
+                
+            if self.table.rowCount() == 0:
+                QMessageBox.information(self, "No Data", "No data available for the selected range and filters.")
+                
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            QMessageBox.critical(self, "Error", f"Failed to generate report: {str(e)}")
+            
+    def generate_daily(self, session, start, end):
+        records = session.query(Attendance).filter(Attendance.date >= start, Attendance.date <= end).order_by(Attendance.date).all()
+        
+        for row, rec in enumerate(records):
+            self.table.insertRow(row)
+            
+            shift_name = rec.employee.shift.name if rec.employee.shift else "Custom"
+            in_t = rec.clock_in.strftime("%H:%M") if rec.clock_in else "-"
+            out_t = rec.clock_out.strftime("%H:%M") if rec.clock_out else "-"
+            
+            status = "Present"
+            if not rec.clock_in: status = "Absent?" 
+            
+            data = [
+                rec.date.strftime("%Y-%m-%d"),
+                rec.employee.attendance_code,
+                rec.employee.full_name,
+                shift_name,
+                in_t,
+                out_t,
+                status
+            ]
+            self.add_row(row, data)
+
+    def generate_monthly(self, session, start, end):
+        stats = session.query(
+            Attendance.employee_id,
+            func.count(Attendance.id).label('days')
+        ).filter(Attendance.date >= start, Attendance.date <= end).group_by(Attendance.employee_id).all()
+        
+        for row, stat in enumerate(stats):
+            self.table.insertRow(row)
+            emp = session.query(Employee).get(stat.employee_id)
+            month_str = start.strftime("%B %Y")
+            
+            data = [
+                emp.attendance_code,
+                emp.full_name,
+                month_str,
+                str(stat.days)
+            ]
+            self.add_row(row, data)
+
+    def generate_leave(self, session, start, end):
+        short_leaves = session.query(ShortLeave).filter(ShortLeave.date >= start, ShortLeave.date <= end).all()
+        long_leaves = session.query(LeaveRequest).filter(
+            LeaveRequest.start_date <= end,
+            LeaveRequest.end_date >= start
+        ).all()
+        
+        row_idx = 0
+        for l in short_leaves:
+            self.table.insertRow(row_idx)
+            data = [
+                l.date.strftime("%Y-%m-%d"),
+                l.employee.attendance_code,
+                l.employee.full_name,
+                "Short Leave",
+                f"{l.start_time}-{l.end_time} ({l.reason})",
+                l.status
+            ]
+            self.add_row(row_idx, data)
+            row_idx += 1
+            
+        for l in long_leaves:
+            self.table.insertRow(row_idx)
+            data = [
+                f"{l.start_date} to {l.end_date}",
+                l.employee.attendance_code,
+                l.employee.full_name,
+                l.leave_type,
+                l.reason,
+                l.status
+            ]
+            self.add_row(row_idx, data)
+            row_idx += 1
+
+    def generate_late(self, session, start, end):
+        pass
+
+    def generate_overtime(self, session, start, end):
+        records = session.query(Attendance).filter(
+            Attendance.date >= start, 
+            Attendance.date <= end,
+            Attendance.overtime_hours > 0
+        ).order_by(Attendance.date).all()
+        
+        for row, rec in enumerate(records):
+            self.table.insertRow(row)
+            shift_end = "-"
+            if rec.employee.shift:
+                shift_end = rec.employee.shift.end_time.strftime("%H:%M")
+            
+            out_t = rec.clock_out.strftime("%H:%M") if rec.clock_out else "-"
+            
+            data = [
+                rec.date.strftime("%Y-%m-%d"),
+                rec.employee.attendance_code,
+                rec.employee.full_name,
+                out_t,
+                shift_end,
+                str(rec.overtime_hours)
+            ]
+            self.add_row(row, data)
+            
+    def generate_master_summary(self, session, start, end):
+        query = session.query(Employee).filter_by(is_active=True)
+        
+        comp_id = self.comp_filter.currentData()
+        if comp_id: query = query.filter_by(company_id=comp_id)
+        
+        ba_id = self.ba_filter.currentData()
+        if ba_id: query = query.filter_by(business_area_id=ba_id)
+        
+        emp_id = self.emp_filter.currentData()
+        if emp_id: query = query.filter_by(id=emp_id)
+        
+        employees = query.all()
+        
+        for row, emp in enumerate(employees):
+            self.table.insertRow(row)
+            
+            total_days_range = (end - start).days + 1
+            
+            working_days_count = 0
+            curr = start
+            while curr <= end:
+                is_hol = CalendarService.is_holiday(session, curr, emp)['is_holiday']
+                is_weekend = CalendarService.is_weekend(session, curr, emp)
+                if not (is_hol or is_weekend):
+                    working_days_count += 1
+                curr += timedelta(days=1)
+                
+            att_records = session.query(Attendance).filter(
+                Attendance.employee_id == emp.id,
+                Attendance.date >= start,
+                Attendance.date <= end
+            ).all()
+            
+            present_days = 0
+            total_work_seconds = 0
+            total_late_seconds = 0
+            total_ot_seconds = 0
+            late_days_count = 0 
+            
+            for att in att_records:
+                if att.clock_in and att.clock_out:
+                    present_days += 1
+                    work_dur = (att.clock_out - att.clock_in).total_seconds()
+                    total_work_seconds += work_dur
+                    
+                    shift = ShiftService.get_employee_shift_details(emp)
+                    if shift:
+                        sch_in = datetime.combine(att.date, shift["start_time"])
+                        if att.clock_in > sch_in:
+                            late_diff = (att.clock_in - sch_in).total_seconds()
+                            allowance_sec = shift.get("late_allowance_minutes", 15) * 60
+                            if late_diff > allowance_sec:
+                                late_days_count += 1
+                            if late_diff > 0:
+                                total_late_seconds += late_diff
+                        
+                        sch_out = datetime.combine(att.date, shift["end_time"])
+                        if att.clock_out > sch_out:
+                            ot_diff = (att.clock_out - sch_out).total_seconds()
+                            if ot_diff > 0:
+                                total_ot_seconds += ot_diff
+            
+            absent_days = working_days_count - present_days
+            if absent_days < 0: absent_days = 0 
+            
+            sl_records = session.query(ShortLeave).filter(
+                ShortLeave.employee_id == emp.id,
+                ShortLeave.date >= start,
+                ShortLeave.date <= end,
+                ShortLeave.status == "Approved"
+            ).all()
+            
+            sl_seconds = 0
+            for sl in sl_records:
+                 d = datetime.combine(date.min, sl.end_time) - datetime.combine(date.min, sl.start_time)
+                 sl_seconds += d.total_seconds()
+                 
+            lr_records = session.query(LeaveRequest).filter(
+                LeaveRequest.employee_id == emp.id,
+                LeaveRequest.status == "Approved",
+                LeaveRequest.start_date <= end,
+                LeaveRequest.end_date >= start
+            ).all()
+            
+            leaves_taken_days = 0
+            for lr in lr_records:
+                s = max(lr.start_date, start)
+                e = min(lr.end_date, end)
+                days = (e - s).days + 1
+                if days > 0: leaves_taken_days += days
+                
+            quotas = session.query(LeaveQuota).filter(
+                (LeaveQuota.company_id == emp.company_id) | (LeaveQuota.company_id == None),
+                (LeaveQuota.business_area_id == emp.business_area_id) | (LeaveQuota.business_area_id == None)
+            ).all()
+            
+            total_quota = sum([q.quota_limit for q in quotas if q.leave_type != "ShortLeave"])
+            remaining = total_quota - leaves_taken_days 
+            
+            data = [
+                emp.attendance_code,
+                emp.full_name,
+                emp.company.name if emp.company else "-",
+                emp.business_area.name if emp.business_area else "-",
+                str(total_days_range),
+                str(working_days_count),
+                str(present_days),
+                str(absent_days),
+                str(late_days_count),
+                f"{total_work_seconds/3600:.2f}",
+                f"{total_late_seconds/3600:.2f}",
+                f"{total_ot_seconds/3600:.2f}",
+                f"{sl_seconds/3600:.2f}",
+                str(leaves_taken_days),
+                str(remaining)
+            ]
+            self.add_row(row, data)
+
+    def add_row(self, row, data):
+        self.current_data.append(data)
+        for col, val in enumerate(data):
+            self.table.setItem(row, col, QTableWidgetItem(str(val)))
+            
+    def export_csv(self):
+        if not hasattr(self, 'current_data') or not self.current_data:
+             QMessageBox.warning(self, "Error", "No data to export")
+             return
+        
+        path, _ = QFileDialog.getSaveFileName(self, "Export Report", f"{self.mode}.csv", "CSV Files (*.csv)")
+        if path:
+            try:
+                headers = [self.table.horizontalHeaderItem(i).text() for i in range(self.table.columnCount())]
+                with open(path, 'w', newline='') as f:
+                    writer = csv.writer(f)
+                    writer.writerow(headers)
+                    writer.writerows(self.current_data)
+                QMessageBox.information(self, "Success", "Export Successful")
+            except Exception as e:
+                QMessageBox.critical(self, "Error", str(e))
+
+    def generate_month_wise_attendance(self, session, start, end):
+        # 1. Identify Employees based on filters
+        query = session.query(Employee).filter_by(is_active=True)
+        
+        comp_id = self.comp_filter.currentData()
+        if comp_id: query = query.filter_by(company_id=comp_id)
+        
+        ba_id = self.ba_filter.currentData()
+        if ba_id: query = query.filter_by(business_area_id=ba_id)
+        
+        emp_id = self.emp_filter.currentData()
+        if emp_id: query = query.filter_by(id=emp_id)
+        
+        employees = query.all()
+        
+        # 2. Iterate Date Range -> Employees
+        row_idx = 0
+        for emp in employees:
+            curr = start
+            while curr <= end:
+                self.table.insertRow(row_idx)
+                
+                # Check Attendance
+                att = session.query(Attendance).filter_by(employee_id=emp.id, date=curr).first()
+                
+                in_t = "-"
+                out_t = "-"
+                status = "Absent"
+                
+                # Check Holiday/Weekend
+                hol_info = CalendarService.is_holiday(session, curr, emp)
+                if hol_info['is_holiday']:
+                    status = f"Holiday: {hol_info['description']}"
+                elif CalendarService.is_weekend(session, curr, emp):
+                    status = "Weekend"
+                
+                if att:
+                    if att.clock_in:
+                        in_t = att.clock_in.strftime("%H:%M")
+                        status = "Present"
+                        # Check Late
+                        shift = ShiftService.get_employee_shift_details(emp)
+                        if shift:
+                            sch_in = datetime.combine(curr, shift["start_time"])
+                            allowance = shift.get("late_allowance_minutes", 15)
+                            if att.clock_in > sch_in + timedelta(minutes=allowance):
+                                status = "Late"
+                                
+                    if att.clock_out:
+                         out_t = att.clock_out.strftime("%H:%M")
+                
+                # Check Leaves
+                lr = session.query(LeaveRequest).filter(
+                    LeaveRequest.employee_id == emp.id,
+                    LeaveRequest.status == "Approved",
+                    LeaveRequest.start_date <= curr,
+                    LeaveRequest.end_date >= curr
+                ).first()
+                if lr:
+                    status = f"Leave: {lr.leave_type}"
+                    
+                shift_name = emp.shift.name if emp.shift else "Custom"
+                if emp.shift:
+                    s_times = f"{emp.shift.start_time.strftime('%H:%M')}-{emp.shift.end_time.strftime('%H:%M')}"
+                else:
+                    s_times = "Custom"
+                
+                data = [
+                    curr.strftime("%Y-%m-%d"),
+                    emp.attendance_code,
+                    emp.full_name,
+                    emp.company.name if emp.company else "-",
+                    emp.business_area.name if emp.business_area else "-",
+                    s_times,
+                    in_t,
+                    out_t,
+                    status
+                ]
+                self.add_row(row_idx, data)
+                row_idx += 1
+                curr += timedelta(days=1)

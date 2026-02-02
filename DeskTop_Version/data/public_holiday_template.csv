@@ -1,0 +1,6 @@
+Date,Description,Type,Is_OT_Eligible,Year,Company_Code,Business_Area_Code
+2025-01-01,New Year's Day,National,False,2025,COMP001,BA01
+2025-02-21,Language Movement Day,National,True,2025,COMP001,BA01
+2025-03-26,Independence Day,National,True,2025,,
+2025-05-01,Labor Day,International,False,2025,COMP002,BA02
+2025-12-16,Victory Day,National,True,2025,,

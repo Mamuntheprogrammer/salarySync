@@ -1,0 +1,412 @@
+from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton, 
+                             QLabel, QTableWidget, QTableWidgetItem, QDialog, 
+                             QLineEdit, QFormLayout, QMessageBox, QHeaderView, QComboBox, 
+                             QDateEdit, QCheckBox, QTabWidget, QSpinBox, QFileDialog)
+from PyQt6.QtCore import QDate, Qt
+from database import get_db_session
+from models import HolidayCalendar, WeeklyHoliday, BusinessArea, Employee
+from datetime import datetime
+import csv
+
+class CalendarManagement(QWidget):
+    def __init__(self):
+        super().__init__()
+        self.init_ui()
+        
+    def init_ui(self):
+        layout = QVBoxLayout()
+        self.setLayout(layout)
+        
+        layout.addWidget(QLabel("<h2>Holiday & Weekly Off Manager</h2>"))
+        
+        self.tabs = QTabWidget()
+        self.tabs.addTab(self.create_holiday_tab(), "Public Holidays")
+        self.tabs.addTab(self.create_weekly_tab(), "Weekly Holidays")
+        
+        layout.addWidget(self.tabs)
+        
+        # Initial Load
+        self.load_holidays()
+        self.load_weekly()
+
+    # --- TAB 1: Public Holidays ---
+    def create_holiday_tab(self):
+        widget = QWidget()
+        layout = QVBoxLayout(widget)
+        
+        # Tools
+        tools = QHBoxLayout()
+        
+        self.year_filter = QComboBox()
+        current_year = datetime.now().year
+        self.year_filter.addItems([str(y) for y in range(current_year-2, current_year+5)])
+        self.year_filter.setCurrentText(str(current_year))
+        self.year_filter.currentTextChanged.connect(self.load_holidays)
+        
+        tools.addWidget(QLabel("Year:"))
+        tools.addWidget(self.year_filter)
+        tools.addStretch()
+        
+        btn_add = QPushButton("Add Holiday")
+        btn_add.clicked.connect(lambda: self.add_holiday_dialog(holiday_obj=None))
+        tools.addWidget(btn_add)
+        
+        btn_upload = QPushButton("Upload CSV")
+        btn_upload.clicked.connect(self.upload_holiday_csv)
+        tools.addWidget(btn_upload)
+        
+        layout.addLayout(tools)
+        
+        # Table
+        self.hol_table = QTableWidget()
+        self.hol_table.setColumnCount(7)
+        self.hol_table.setHorizontalHeaderLabels(["Date", "Description", "Type", "Company Code", "Business Area", "OT Eligible", "Action"])
+        self.hol_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        layout.addWidget(self.hol_table)
+        
+        return widget
+        
+    def load_holidays(self):
+        year = int(self.year_filter.currentText())
+        session = get_db_session()
+        holidays = session.query(HolidayCalendar).filter_by(year=year).order_by(HolidayCalendar.date).all()
+        
+        self.hol_table.setRowCount(0)
+        for row, h in enumerate(holidays):
+            self.hol_table.insertRow(row)
+            self.hol_table.setItem(row, 0, QTableWidgetItem(h.date.strftime("%Y-%m-%d")))
+            self.hol_table.setItem(row, 1, QTableWidgetItem(h.description))
+            self.hol_table.setItem(row, 2, QTableWidgetItem(h.type))
+            
+            comp_val = h.company_code if h.company_code else "Global"
+            ba_val = h.business_area_code if h.business_area_code else "All"
+            
+            self.hol_table.setItem(row, 3, QTableWidgetItem(comp_val))
+            self.hol_table.setItem(row, 4, QTableWidgetItem(ba_val))
+            
+            self.hol_table.setItem(row, 5, QTableWidgetItem("Yes" if h.is_ot_eligible else "No"))
+            
+            # Action Column with Edit/Delete
+            action_widget = QWidget()
+            action_layout = QHBoxLayout(action_widget)
+            action_layout.setContentsMargins(0, 0, 0, 0)
+            
+            btn_edit = QPushButton("Edit")
+            btn_edit.clicked.connect(lambda ch, x=h: self.add_holiday_dialog(holiday_obj=x))
+            action_layout.addWidget(btn_edit)
+            
+            btn_del = QPushButton("Delete")
+            btn_del.setStyleSheet("color: red")
+            btn_del.clicked.connect(lambda ch, x=h: self.delete_holiday(x))
+            action_layout.addWidget(btn_del)
+            
+            self.hol_table.setCellWidget(row, 6, action_widget)
+            
+    def upload_holiday_csv(self):
+        path, _ = QFileDialog.getOpenFileName(self, "Upload Holiday CSV", "", "CSV Files (*.csv)")
+        if not path: return
+        
+        session = get_db_session()
+        try:
+            with open(path, 'r') as f:
+                reader = csv.DictReader(f)
+                # Expected: Date, Description, Type, OT Eligible
+                
+                count = 0
+                for row in reader:
+                    # Parse Date
+                    date_str = row.get("Date")
+                    if not date_str: continue
+                    
+                    try:
+                        h_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+                    except ValueError:
+                        continue # Skip invalid dates
+                        
+                    desc = row.get("Description", "Holiday")
+                    h_type = row.get("Type", "National")
+                    ot_raw = row.get("OT Eligible", "No").lower()
+                    is_ot = ot_raw in ["yes", "true", "1", "y"]
+                    
+                    # Check exist
+                    exists = session.query(HolidayCalendar).filter_by(date=h_date).first()
+                    if exists:
+                        exists.description = desc
+                        exists.type = h_type
+                        exists.is_ot_eligible = is_ot
+                    else:
+                        h = HolidayCalendar(
+                            date=h_date,
+                            year=h_date.year,
+                            description=desc,
+                            type=h_type,
+                            is_ot_eligible=is_ot,
+                            company_id=None, # Global
+                            business_area_id=None
+                        )
+                        session.add(h)
+                    count += 1
+                
+                session.commit()
+                QMessageBox.information(self, "Success", f"Imported/Updated {count} holidays.")
+                self.load_holidays()
+                
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Failed to import: {str(e)}")
+
+    def add_holiday_dialog(self, holiday_obj=None):
+        session = get_db_session() # Fix: Initialize session
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Add Holiday")
+        form = QFormLayout(dialog)
+        
+        date_input = QDateEdit()
+        date_input.setCalendarPopup(True)
+        date_input.setDate(QDate.currentDate())
+        
+        desc_input = QLineEdit()
+        
+        type_input = QComboBox()
+        type_input.setEditable(True)
+        type_input.addItems(["National", "Festival", "Company", "Other"])
+        
+        ot_input = QCheckBox("OT Eligible")
+        
+        comp_input = QLineEdit()
+        comp_input.setPlaceholderText("Company Code (Max 4 chars)")
+        comp_input.setMaxLength(4) # Enforce UI limit
+        
+        ba_input = QLineEdit()
+        ba_input.setPlaceholderText("Business Area Code (Max 2 chars)")
+        ba_input.setMaxLength(2) # Enforce UI limit
+        
+        # Pre-fill if editing
+        if holiday_obj:
+            dialog.setWindowTitle("Edit Holiday")
+            date_input.setDate(holiday_obj.date)
+            desc_input.setText(holiday_obj.description)
+            type_input.setCurrentText(holiday_obj.type)
+            ot_input.setChecked(holiday_obj.is_ot_eligible)
+            
+            if holiday_obj.company_code:
+                comp_input.setText(holiday_obj.company_code)
+                
+            if holiday_obj.business_area_code:
+                ba_input.setText(holiday_obj.business_area_code)
+        
+        form.addRow("Date:", date_input)
+        form.addRow("Description:", desc_input)
+        form.addRow("Type:", type_input)
+        form.addRow("OT Eligible:", ot_input)
+        form.addRow("Company Code:", comp_input)
+        form.addRow("Business Area Code:", ba_input)
+        
+        btn_save = QPushButton("Save")
+        def save():
+            if not desc_input.text(): 
+                QMessageBox.warning(dialog, "Warning", "Description is required")
+                return
+            
+            comp_code = comp_input.text().strip() or None
+            ba_code = ba_input.text().strip() or None
+            
+            # Additional Validation (redundant with setMaxLength but good for logic)
+            if comp_code and len(comp_code) > 4:
+                QMessageBox.warning(dialog, "Invalid Input", "Company Code cannot exceed 4 characters.")
+                return
+            if ba_code and len(ba_code) > 2:
+                QMessageBox.warning(dialog, "Invalid Input", "Business Area Code cannot exceed 2 characters.")
+                return
+
+            h_date = date_input.date().toPyDate()
+            year = h_date.year
+            
+            h = HolidayCalendar(
+                date=h_date,
+                year=year,
+                description=desc_input.text(),
+                type=type_input.currentText(),
+                is_ot_eligible=ot_input.isChecked(),
+                company_code=comp_code,
+                business_area_code=ba_code
+            )
+            try:
+                if holiday_obj:
+                    # Update existing
+                    holiday_obj.date = h_date
+                    holiday_obj.year = year
+                    holiday_obj.description = desc_input.text()
+                    holiday_obj.type = type_input.currentText()
+                    holiday_obj.is_ot_eligible = ot_input.isChecked()
+                    holiday_obj.company_code = comp_code
+                    holiday_obj.business_area_code = ba_code
+                else:
+                    session.add(h)
+                
+                session.commit()
+                dialog.accept()
+                self.load_holidays()
+            except Exception as e:
+                QMessageBox.critical(dialog, "Error", str(e))
+                
+        btn_save.clicked.connect(save)
+        form.addRow(btn_save)
+        dialog.exec()
+
+    def delete_holiday(self, holiday):
+        confirm = QMessageBox.question(self, "Confirm", "Delete this holiday?", QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+        if confirm == QMessageBox.StandardButton.Yes:
+            session = get_db_session()
+            session.query(HolidayCalendar).filter_by(id=holiday.id).delete()
+            session.commit()
+            self.load_holidays()
+
+    # --- TAB 2: Weekly Holidays ---
+    def create_weekly_tab(self):
+        widget = QWidget()
+        layout = QVBoxLayout(widget)
+        
+        tools = QHBoxLayout()
+        btn_add = QPushButton("Add Weekly Rule")
+        btn_add.clicked.connect(self.add_weekly_dialog)
+        tools.addWidget(btn_add)
+        tools.addStretch()
+        layout.addLayout(tools)
+        
+        self.weekly_table = QTableWidget()
+        self.weekly_table.setColumnCount(4)
+        self.weekly_table.setHorizontalHeaderLabels(["Scope", "Day", "Target", "Action"])
+        self.weekly_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        layout.addWidget(self.weekly_table)
+        
+        return widget
+
+    def load_weekly(self):
+        session = get_db_session()
+        rules = session.query(WeeklyHoliday).all()
+        
+        days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+        
+        self.weekly_table.setRowCount(0)
+        for row, r in enumerate(rules):
+            self.weekly_table.insertRow(row)
+            
+            target = "Global?" 
+            scope = "Unknown"
+            
+            if r.company:
+                scope = "Company"
+                target = r.company.name
+            if r.business_area:
+                scope = "Business Area"
+                target = r.business_area.name
+            elif r.employee:
+                scope = "Employee"
+                target = r.employee.full_name
+            
+            self.weekly_table.setItem(row, 0, QTableWidgetItem(scope))
+            self.weekly_table.setItem(row, 1, QTableWidgetItem(days[r.day_of_week]))
+            self.weekly_table.setItem(row, 2, QTableWidgetItem(target))
+            
+            btn_del = QPushButton("Delete")
+            btn_del.setStyleSheet("color: red")
+            btn_del.clicked.connect(lambda ch, x=r: self.delete_weekly(x))
+            self.weekly_table.setCellWidget(row, 3, btn_del)
+
+    def add_weekly_dialog(self):
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Add Weekly Holiday Rule")
+        form = QFormLayout(dialog)
+        
+        day_input = QComboBox()
+        days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+        day_input.addItems(days)
+        
+        from models import Company
+        session = get_db_session()
+        
+        comp_input = QComboBox()
+        comp_input.addItem("All Companies (Global)", None)
+        comps = session.query(Company).all()
+        for c in comps: comp_input.addItem(c.name, c.id)
+        
+        ba_input = QComboBox()
+        ba_input.addItem("All Business Areas", None)
+        ba_input.setEnabled(False)
+        
+        emp_input = QComboBox()
+        emp_input.addItem("All Employees", None)
+        emp_input.setEnabled(False)
+        
+        def on_comp_change():
+            ba_input.clear()
+            ba_input.addItem("All Business Areas", None)
+            ba_input.setEnabled(False)
+            
+            comp_id = comp_input.currentData()
+            if comp_id:
+                bas = session.query(BusinessArea).filter_by(company_id=comp_id).all()
+                for ba in bas: ba_input.addItem(ba.name, ba.id)
+                ba_input.setEnabled(True)
+            
+            emp_input.clear()
+            emp_input.addItem("All Employees", None)
+            emp_input.setEnabled(False)
+            
+        def on_ba_change():
+            emp_input.clear()
+            emp_input.addItem("All Employees", None)
+            emp_input.setEnabled(False)
+            
+            ba_id = ba_input.currentData()
+            if ba_id:
+                emps = session.query(Employee).filter_by(business_area_id=ba_id, is_active=True).all()
+                for e in emps: emp_input.addItem(f"{e.attendance_code} - {e.full_name}", e.id)
+                emp_input.setEnabled(True)
+                
+        comp_input.currentIndexChanged.connect(on_comp_change)
+        ba_input.currentIndexChanged.connect(on_ba_change)
+        
+        form.addRow("Day:", day_input)
+        form.addRow("Company:", comp_input)
+        form.addRow("Business Area:", ba_input)
+        form.addRow("Employee:", emp_input)
+        
+        btn_save = QPushButton("Save")
+        def save():
+            day_idx = day_input.currentIndex()
+            comp_id = comp_input.currentData()
+            ba_id = ba_input.currentData()
+            emp_id = emp_input.currentData()
+            
+            # Validation: Must select at least Company? Or Global is allowed?
+            # User wants: "add company for each section".
+            # If nothing selected, maybe Global? Or specific to comp logic.
+                
+            w = WeeklyHoliday(
+                day_of_week=day_idx,
+                company_id=comp_id,
+                business_area_id=ba_id,
+                employee_id=emp_id
+            )
+            try:
+                session.add(w)
+                session.commit()
+                dialog.accept()
+                self.load_weekly()
+            except Exception as e:
+                QMessageBox.critical(dialog, "Error", str(e))
+                
+        btn_save.clicked.connect(save)
+        form.addRow(btn_save)
+        dialog.exec()
+        
+    def delete_weekly(self, rule):
+        confirm = QMessageBox.question(self, "Confirm", "Delete this rule?", QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+        if confirm == QMessageBox.StandardButton.Yes:
+            session = get_db_session()
+            session.query(WeeklyHoliday).filter_by(id=rule.id).delete()
+            session.commit()
+            self.load_weekly()
+
+            self.load_weekly()
