@@ -71,13 +71,29 @@ class AttendanceMaintenance(QWidget):
             self.table.setItem(row, 2, QTableWidgetItem(in_time))
             self.table.setItem(row, 3, QTableWidgetItem(out_time))
             
+            # Actions
+            action_widget = QWidget()
+            action_layout = QHBoxLayout(action_widget)
+            action_layout.setContentsMargins(2, 2, 2, 2)
+            
             btn_edit = QPushButton("Edit")
             btn_edit.clicked.connect(lambda checked, r=rec: self.edit_record(r))
-            self.table.setCellWidget(row, 4, btn_edit)
+            action_layout.addWidget(btn_edit)
+            
+            btn_del = QPushButton("Delete")
+            btn_del.setStyleSheet("color: red")
+            btn_del.clicked.connect(lambda ch, x=rec: self.delete_record(x))
+            action_layout.addWidget(btn_del)
+            
+            self.table.setCellWidget(row, 4, action_widget)
 
-
-
-
+    def delete_record(self, record):
+        confirm = QMessageBox.question(self, "Confirm", f"Delete attendance record for {record.employee.full_name}?", QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+        if confirm == QMessageBox.StandardButton.Yes:
+            session = get_db_session()
+            session.query(Attendance).filter(Attendance.id == record.id).delete()
+            session.commit()
+            self.load_data()
 
     def edit_record(self, record):
         dialog = QDialog(self)

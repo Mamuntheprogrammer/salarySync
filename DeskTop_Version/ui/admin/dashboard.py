@@ -130,7 +130,7 @@ class AdminDashboard(QWidget):
                 {"label": "Designation Manager", "key": "designations"},
                 {"label": "Shift Manager", "key": "shifts"},
                 {"label": "Holiday & Weekly Manager", "key": "calendars"},
-                {"label": "Leave Quotas", "key": "leave_quotas"},
+                {"label": "Leave Manager", "key": "leave_quotas"},
                 {"label": "Short Leave Manager", "key": "short_leaves"},
             ],
             "System": [

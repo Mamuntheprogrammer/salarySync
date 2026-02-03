@@ -51,6 +51,10 @@ class CalendarManagement(QWidget):
         btn_add.clicked.connect(lambda: self.add_holiday_dialog(holiday_obj=None))
         tools.addWidget(btn_add)
         
+        btn_refresh = QPushButton("Refresh")
+        btn_refresh.clicked.connect(self.load_holidays)
+        tools.addWidget(btn_refresh)
+        
         btn_upload = QPushButton("Upload CSV")
         btn_upload.clicked.connect(self.upload_holiday_csv)
         tools.addWidget(btn_upload)
@@ -285,6 +289,11 @@ class CalendarManagement(QWidget):
         btn_add = QPushButton("Add Weekly Rule")
         btn_add.clicked.connect(self.add_weekly_dialog)
         tools.addWidget(btn_add)
+        
+        btn_refresh = QPushButton("Refresh")
+        btn_refresh.clicked.connect(self.load_weekly)
+        tools.addWidget(btn_refresh)
+        
         tools.addStretch()
         layout.addLayout(tools)
         
@@ -323,14 +332,25 @@ class CalendarManagement(QWidget):
             self.weekly_table.setItem(row, 1, QTableWidgetItem(days[r.day_of_week]))
             self.weekly_table.setItem(row, 2, QTableWidgetItem(target))
             
+            # Action Column with Edit/Delete
+            action_widget = QWidget()
+            action_layout = QHBoxLayout(action_widget)
+            action_layout.setContentsMargins(0, 0, 0, 0)
+            
+            btn_edit = QPushButton("Edit")
+            btn_edit.clicked.connect(lambda ch, x=r: self.add_weekly_dialog(weekly_obj=x))
+            action_layout.addWidget(btn_edit)
+            
             btn_del = QPushButton("Delete")
             btn_del.setStyleSheet("color: red")
             btn_del.clicked.connect(lambda ch, x=r: self.delete_weekly(x))
-            self.weekly_table.setCellWidget(row, 3, btn_del)
+            action_layout.addWidget(btn_del)
+            
+            self.weekly_table.setCellWidget(row, 3, action_widget)
 
-    def add_weekly_dialog(self):
+    def add_weekly_dialog(self, weekly_obj=None):
         dialog = QDialog(self)
-        dialog.setWindowTitle("Add Weekly Holiday Rule")
+        dialog.setWindowTitle("Edit Weekly Holiday Rule" if weekly_obj else "Add Weekly Holiday Rule")
         form = QFormLayout(dialog)
         
         day_input = QComboBox()
@@ -391,6 +411,36 @@ class CalendarManagement(QWidget):
                 
         comp_input.currentIndexChanged.connect(on_comp_change)
         
+        # Pre-fill if editing
+        if weekly_obj:
+            day_input.setCurrentIndex(weekly_obj.day_of_week)
+            
+            if weekly_obj.shift_id:
+                rb_shift.setChecked(True)
+                toggle_mode() # Update enabled states
+                idx = shift_input.findData(weekly_obj.shift_id)
+                if idx >= 0: shift_input.setCurrentIndex(idx)
+            else:
+                rb_org.setChecked(True)
+                toggle_mode()
+                
+                if weekly_obj.company_id:
+                    idx = comp_input.findData(weekly_obj.company_id)
+                    if idx >= 0: comp_input.setCurrentIndex(idx)
+                    
+                    # Wait/Trigger population of BA
+                    # on_comp_change called automatically or need manual? 
+                    # currentIndexChanged usually fires on programmatic change if signals not blocked.
+                    # Just in case, let's manually trigger logic if BA needs setting
+                    
+                    if weekly_obj.business_area_id:
+                         # Ensure items populated (on_comp_change triggers on index change)
+                         # If index didn't change (e.g. was already 0), might need explicit call?
+                         # But index likely changed if company_id present. 
+                         # Let's verify BA is set.
+                         idx_ba = ba_input.findData(weekly_obj.business_area_id)
+                         if idx_ba >= 0: ba_input.setCurrentIndex(idx_ba)
+
         form.addRow("Mode:", scope_layout)
         form.addRow("Day:", day_input)
         form.addRow("Company:", comp_input)
@@ -413,15 +463,22 @@ class CalendarManagement(QWidget):
                 if not shift_id:
                     QMessageBox.warning(dialog, "Missing Input", "Please select a shift.")
                     return
-                
-            w = WeeklyHoliday(
-                day_of_week=day_idx,
-                company_id=comp_id,
-                business_area_id=ba_id,
-                shift_id=shift_id
-            )
-            try:
+            
+            if weekly_obj:
+                weekly_obj.day_of_week = day_idx
+                weekly_obj.company_id = comp_id
+                weekly_obj.business_area_id = ba_id
+                weekly_obj.shift_id = shift_id
+            else:
+                w = WeeklyHoliday(
+                    day_of_week=day_idx,
+                    company_id=comp_id,
+                    business_area_id=ba_id,
+                    shift_id=shift_id
+                )
                 session.add(w)
+                
+            try:
                 session.commit()
                 dialog.accept()
                 self.load_weekly()

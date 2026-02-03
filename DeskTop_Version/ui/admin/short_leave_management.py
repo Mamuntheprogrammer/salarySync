@@ -21,8 +21,12 @@ class ShortLeaveManagement(QWidget):
         header = QHBoxLayout()
         header.addWidget(QLabel("<h2>Short Leave Manager</h2>"))
         
+        btn_refresh = QPushButton("Refresh")
+        btn_refresh.clicked.connect(self.load_data)
+        header.addWidget(btn_refresh)
+        
         btn_add = QPushButton("Add Short Leave")
-        btn_add.clicked.connect(self.add_dialog)
+        btn_add.clicked.connect(lambda: self.add_dialog(None))
         header.addWidget(btn_add)
         
         layout.addLayout(header)
@@ -56,6 +60,10 @@ class ShortLeaveManagement(QWidget):
             action_layout = QHBoxLayout(action_widget)
             action_layout.setContentsMargins(2, 2, 2, 2)
             
+            btn_edit = QPushButton("Edit")
+            btn_edit.clicked.connect(lambda ch, x=l: self.add_dialog(x))
+            action_layout.addWidget(btn_edit)
+            
             btn_delete = QPushButton("Delete")
             btn_delete.setStyleSheet("background-color: #f44336; color: white;")
             btn_delete.clicked.connect(lambda ch, x=l: self.delete_leave(x))
@@ -71,32 +79,47 @@ class ShortLeaveManagement(QWidget):
             session.commit()
             self.load_data()
 
-    def add_dialog(self):
+    def add_dialog(self, leave_obj=None):
         session = get_db_session()
         employees = session.query(Employee).filter_by(is_active=True).all()
         
         dialog = QDialog(self)
-        dialog.setWindowTitle("Add Short Leave")
+        dialog.setWindowTitle("Edit Short Leave" if leave_obj else "Add Short Leave")
         form = QFormLayout(dialog)
         
         emp_combo = QComboBox()
         for e in employees:
             emp_combo.addItem(f"{e.attendance_code} - {e.full_name}", e.id)
             
+        if leave_obj and leave_obj.employee_id:
+             idx = emp_combo.findData(leave_obj.employee_id)
+             if idx >= 0: emp_combo.setCurrentIndex(idx)
+            
         date_input = QDateEdit()
         date_input.setCalendarPopup(True)
-        date_input.setDate(QDate.currentDate())
+        if leave_obj:
+            date_input.setDate(leave_obj.date)
+        else:
+            date_input.setDate(QDate.currentDate())
         
         start_input = QTimeEdit()
-        start_input.setTime(QTime.currentTime())
+        if leave_obj:
+            start_input.setTime(QTime(leave_obj.start_time.hour, leave_obj.start_time.minute))
+        else:
+            start_input.setTime(QTime.currentTime())
         
         end_input = QTimeEdit()
-        end_input.setTime(QTime.currentTime().addSecs(3600)) # Default 1 hour
+        if leave_obj:
+             end_input.setTime(QTime(leave_obj.end_time.hour, leave_obj.end_time.minute))
+        else:
+             end_input.setTime(QTime.currentTime().addSecs(3600))
         
         reason_input = QLineEdit()
+        if leave_obj: reason_input.setText(leave_obj.reason or "")
         
         status_combo = QComboBox()
         status_combo.addItems(["Pending", "Approved", "Rejected"])
+        if leave_obj: status_combo.setCurrentText(leave_obj.status)
         
         form.addRow("Employee:", emp_combo)
         form.addRow("Date:", date_input)
@@ -106,7 +129,7 @@ class ShortLeaveManagement(QWidget):
         form.addRow("Status:", status_combo)
         
         btn_save = QPushButton("Save")
-        btn_save.clicked.connect(lambda: self.save_leave(dialog, {
+        btn_save.clicked.connect(lambda: self.save_leave(dialog, leave_obj, {
             "employee_id": emp_combo.currentData(),
             "date": date_input.date().toPyDate(),
             "start_time": start_input.time().toPyTime(),
@@ -118,11 +141,21 @@ class ShortLeaveManagement(QWidget):
         
         dialog.exec()
         
-    def save_leave(self, dialog, data):
+    def save_leave(self, dialog, leave_obj, data):
         session = get_db_session()
         try:
-            l = ShortLeave(**data)
-            session.add(l)
+            if leave_obj:
+                l = session.get(ShortLeave, leave_obj.id)
+                l.employee_id = data['employee_id']
+                l.date = data['date']
+                l.start_time = data['start_time']
+                l.end_time = data['end_time']
+                l.reason = data['reason']
+                l.status = data['status']
+            else:
+                l = ShortLeave(**data)
+                session.add(l)
+                
             session.commit()
             dialog.accept()
             self.load_data()

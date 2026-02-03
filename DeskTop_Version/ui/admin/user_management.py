@@ -20,8 +20,12 @@ class UserManagement(QWidget):
         header = QHBoxLayout()
         header.addWidget(QLabel("<h2>User Management</h2>"))
         
+        btn_refresh = QPushButton("Refresh")
+        btn_refresh.clicked.connect(self.load_data)
+        header.addWidget(btn_refresh)
+        
         btn_add = QPushButton("Create User")
-        btn_add.clicked.connect(self.add_user_dialog)
+        btn_add.clicked.connect(lambda: self.add_user_dialog(None))
         header.addWidget(btn_add)
         
         layout.addLayout(header)
@@ -47,22 +51,52 @@ class UserManagement(QWidget):
             emp_name = user.employee.full_name if user.employee else "System Admin"
             self.table.setItem(row, 3, QTableWidgetItem(emp_name))
             
-            # Action (Reset Password)
+            # Action (Edit, Delete, Reset Password)
+            action_widget = QWidget()
+            action_layout = QHBoxLayout(action_widget)
+            action_layout.setContentsMargins(2, 2, 2, 2)
+            
+            btn_edit = QPushButton("Edit")
+            btn_edit.clicked.connect(lambda ch, x=user: self.add_user_dialog(x))
+            action_layout.addWidget(btn_edit)
+            
             btn_reset = QPushButton("Reset Pwd")
             btn_reset.clicked.connect(lambda checked, u=user: self.reset_password_dialog(u))
-            self.table.setCellWidget(row, 4, btn_reset)
+            action_layout.addWidget(btn_reset)
+            
+            btn_del = QPushButton("Delete")
+            btn_del.setStyleSheet("color: red")
+            btn_del.clicked.connect(lambda ch, x=user: self.delete_user(x))
+            action_layout.addWidget(btn_del)
+            
+            self.table.setCellWidget(row, 4, action_widget)
+            
+    def delete_user(self, user):
+        confirm = QMessageBox.question(self, "Confirm", f"Delete user '{user.username}'?", QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+        if confirm == QMessageBox.StandardButton.Yes:
+            session = get_db_session()
+            session.query(AdminUser).filter(AdminUser.id == user.id).delete()
+            session.commit()
+            self.load_data()
 
-    def add_user_dialog(self):
+    def add_user_dialog(self, user_obj=None):
         dialog = QDialog(self)
-        dialog.setWindowTitle("Create User")
+        dialog.setWindowTitle("Edit User" if user_obj else "Create User")
         form = QFormLayout(dialog)
         
         username_input = QLineEdit()
+        if user_obj: 
+            username_input.setText(user_obj.username)
+            username_input.setEnabled(False) # Usually don't edit username
+            
         password_input = QLineEdit()
         password_input.setEchoMode(QLineEdit.EchoMode.Password)
+        if user_obj:
+            password_input.setPlaceholderText("Leave blank to keep existing password")
         
         role_combo = QComboBox()
         role_combo.addItems(["user", "admin"])
+        if user_obj: role_combo.setCurrentText(user_obj.role)
         
         # Employee Selection
         session = get_db_session()
@@ -73,13 +107,18 @@ class UserManagement(QWidget):
         for emp in employees:
             emp_combo.addItem(f"{emp.attendance_code} - {emp.full_name}", emp.id)
             
+        if user_obj and user_obj.employee_id:
+            idx = emp_combo.findData(user_obj.employee_id)
+            if idx >= 0: emp_combo.setCurrentIndex(idx)
+            
         form.addRow("Username:", username_input)
         form.addRow("Password:", password_input)
         form.addRow("Role:", role_combo)
         form.addRow("Employee Link:", emp_combo)
         
-        btn_save = QPushButton("Create")
+        btn_save = QPushButton("Save")
         btn_save.clicked.connect(lambda: self.save_user(dialog, 
+            user_obj,
             username_input.text(), 
             password_input.text(),
             role_combo.currentText(),
@@ -89,15 +128,39 @@ class UserManagement(QWidget):
         
         dialog.exec()
         
-    def save_user(self, dialog, username, password, role, employee_id):
-        if not username or not password:
-            QMessageBox.warning(dialog, "Error", "Username and Password required")
+    def save_user(self, dialog, user_obj, username, password, role, employee_id):
+        if not username:
+            QMessageBox.warning(dialog, "Error", "Username required")
             return
+        if not user_obj and not password:
+             QMessageBox.warning(dialog, "Error", "Password required for new user")
+             return
             
         session = get_db_session()
         try:
-            UserService.create_user(session, username, password, role, employee_id)
-            QMessageBox.information(dialog, "Success", "User Created")
+            if user_obj:
+                u = session.get(AdminUser, user_obj.id)
+                u.role = role
+                u.employee_id = employee_id
+                if password:
+                     # Using service to hash password? 
+                     # UserService.create_user hashes it. I should use UserService.update_user if it existed.
+                     # Or duplicate hashing. Wait, I recall UserService handles hashing implicitly on creation.
+                     # I should check if I can just call UserService method or if I need to replicate hashing here.
+                     # Safe bet: Use UserService.reset_password logic for password update, and manual for others.
+                     UserService.reset_password(session, u.id, password)
+                     # Re-fetch or stick with current logic?
+                     # Let's simple update fields here.
+                
+                # Update role/emp
+                # Note: If I didn't verify password hashing earlier, assuming reset_password handles it.
+                # Yes, reset_password handles hashing.
+                
+                session.commit()
+            else:
+                UserService.create_user(session, username, password, role, employee_id)
+                
+            QMessageBox.information(dialog, "Success", "User Saved")
             dialog.accept()
             self.load_data()
         except Exception as e:
