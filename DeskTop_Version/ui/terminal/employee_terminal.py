@@ -1,6 +1,6 @@
 from PyQt6.QtWidgets import (QComboBox, QDateEdit, QDialog, QFormLayout, QGridLayout, QGroupBox, QHBoxLayout, 
                              QInputDialog, QLabel, QLineEdit, QMessageBox, QPushButton, QTabWidget, QTimeEdit, 
-                             QVBoxLayout, QWidget)
+                             QVBoxLayout, QWidget, QFrame)
 from PyQt6.QtCore import Qt, QTimer, QTime, QDate
 from PyQt6.QtGui import QFont
 from services.attendance_service import AttendanceService
@@ -26,6 +26,20 @@ class EmployeeTerminal(QWidget):
         layout.addWidget(title)
         
         # Display
+        # Input Container
+        input_container = QFrame()
+        input_container.setStyleSheet("""
+            QFrame {
+                border: 2px solid #ccc;
+                border-radius: 5px;
+                background-color: white;
+            }
+        """)
+        input_layout = QHBoxLayout(input_container)
+        input_layout.setContentsMargins(0, 0, 0, 0)
+        input_layout.setSpacing(0)
+
+        # Display
         self.code_display = QLineEdit()
         self.code_display.setPlaceholderText("Enter 6-Digit Code")
         self.code_display.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -33,8 +47,43 @@ class EmployeeTerminal(QWidget):
         self.code_display.setEchoMode(QLineEdit.EchoMode.Password)
         self.code_display.setReadOnly(False) # Allow keyboard input
         self.code_display.setMaxLength(6) # Limit to 6 chars
-        self.code_display.setStyleSheet("padding: 10px; border: 2px solid #ccc; border-radius: 5px;")
-        layout.addWidget(self.code_display)
+        self.code_display.setStyleSheet("border: none; padding: 10px; background: transparent;")
+        
+        input_layout.addWidget(self.code_display)
+        
+        # Toggle Button
+        self.toggle_btn = QPushButton("👁")
+        self.toggle_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.toggle_btn.setFixedWidth(60) 
+        self.toggle_btn.setFont(QFont("Arial", 20))
+        self.toggle_btn.setToolTip("Show/Hide Password")
+        self.toggle_btn.setStyleSheet("""
+            QPushButton {
+                border: none;
+                background-color: transparent;
+                color: #777777;
+                border-top-right-radius: 5px;
+                border-bottom-right-radius: 5px;
+                padding-right: 10px;
+            }
+            QPushButton:hover {
+                color: #333333;
+                background-color: #f0f0f0;
+            }
+        """)
+        
+        def toggle_password():
+            if self.code_display.echoMode() == QLineEdit.EchoMode.Password:
+                self.code_display.setEchoMode(QLineEdit.EchoMode.Normal)
+                self.toggle_btn.setText("🔒")
+            else:
+                self.code_display.setEchoMode(QLineEdit.EchoMode.Password)
+                self.toggle_btn.setText("👁")
+                
+        self.toggle_btn.clicked.connect(toggle_password)
+        input_layout.addWidget(self.toggle_btn)
+        
+        layout.addWidget(input_container)
         
         # Keypad
         grid_layout = QGridLayout()

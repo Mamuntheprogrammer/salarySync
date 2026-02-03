@@ -9,33 +9,33 @@ class CalendarService:
         """
         Checks if a date is a holiday for an employee.
         Returns dict with keys: is_holiday (bool), description (str), is_ot_eligible (bool)
-        Priority: Individual Holiday > Business Area Holiday > Company > Global
+        Priority: Business Area Holiday > Company > Global
         """
-        # 1. Get Employee Codes
-        comp_code = employee.company.code if employee.company else None
-        ba_code = employee.business_area.code if employee.business_area else None
+        # 1. Get Employee IDs
+        comp_id = employee.company_id
+        ba_id = employee.business_area_id
 
         # 2. Check Business Area Holiday
-        if ba_code:
+        if ba_id:
             ba_holiday = session.query(HolidayCalendar).filter(
                 HolidayCalendar.date == check_date,
-                HolidayCalendar.business_area_code == ba_code
+                HolidayCalendar.business_area_id == ba_id
             ).first()
             if ba_holiday: return {"is_holiday": True, "description": ba_holiday.description, "is_ot_eligible": ba_holiday.is_ot_eligible}
 
         # 3. Check Company Holiday
-        if comp_code:
+        if comp_id:
             comp_holiday = session.query(HolidayCalendar).filter(
                 HolidayCalendar.date == check_date,
-                HolidayCalendar.company_code == comp_code
+                HolidayCalendar.company_id == comp_id
             ).first()
             if comp_holiday: return {"is_holiday": True, "description": comp_holiday.description, "is_ot_eligible": comp_holiday.is_ot_eligible}
             
         # 4. Global Holiday (if any, Null for all)
         global_holiday = session.query(HolidayCalendar).filter(
             HolidayCalendar.date == check_date,
-            HolidayCalendar.company_code == None,
-            HolidayCalendar.business_area_code == None
+            HolidayCalendar.company_id == None,
+            HolidayCalendar.business_area_id == None
         ).first()
         if global_holiday: return {"is_holiday": True, "description": global_holiday.description, "is_ot_eligible": global_holiday.is_ot_eligible}
             
@@ -75,27 +75,27 @@ class CalendarService:
         # Fetch configs efficiently
         
         # Holidays
-        comp_code = employee.company.code if employee.company else None
-        ba_code = employee.business_area.code if employee.business_area else None
+        comp_id = employee.company_id
+        ba_id = employee.business_area_id
 
         # Global
         global_hols = session.query(HolidayCalendar).filter(
             HolidayCalendar.date >= start_date, HolidayCalendar.date <= end_date,
-            HolidayCalendar.company_code == None, HolidayCalendar.business_area_code == None
+            HolidayCalendar.company_id == None, HolidayCalendar.business_area_id == None
         ).all()
         # Company
         comp_hols = []
-        if comp_code:
+        if comp_id:
             comp_hols = session.query(HolidayCalendar).filter(
                 HolidayCalendar.date >= start_date, HolidayCalendar.date <= end_date,
-                HolidayCalendar.company_code == comp_code
+                HolidayCalendar.company_id == comp_id
             ).all()
         # BA
         ba_hols = []
-        if ba_code:
+        if ba_id:
             ba_hols = session.query(HolidayCalendar).filter(
                 HolidayCalendar.date >= start_date, HolidayCalendar.date <= end_date,
-                HolidayCalendar.business_area_code == ba_code
+                HolidayCalendar.business_area_id == ba_id
             ).all()
         # Emp level removed from query
         

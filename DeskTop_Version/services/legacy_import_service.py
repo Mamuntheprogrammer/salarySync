@@ -446,10 +446,34 @@ class LegacyImportService:
         year = int(data.get('year') or date_val.year)
         h_type = data.get('type')
         
-        company_code = str(data.get('company_code', '')).strip() or None
-        ba_code = str(data.get('business_area_code', '')).strip() or None
+        company_code = str(data.get('company_code', '')).strip()
+        ba_code = str(data.get('business_area_code', '')).strip()
         
-        h = session.query(HolidayCalendar).filter_by(date=date_val, company_code=company_code, business_area_code=ba_code).first()
+        comp_id = None
+        ba_id = None
+        
+        if company_code and company_code.lower() != 'none':
+            c = session.query(Company).filter_by(code=company_code).first()
+            if c: 
+                comp_id = c.id
+            else:
+                raise ValueError(f"Company {company_code} not found")
+            
+        if ba_code and ba_code.lower() != 'none':
+            if not comp_id:
+                 raise ValueError("Business Area requires Company Code to be specified")
+            b = session.query(BusinessArea).filter_by(code=ba_code, company_id=comp_id).first()
+            if b: 
+                ba_id = b.id
+            else:
+                 raise ValueError(f"Business Area {ba_code} not found for Company {company_code}")
+        
+        h = session.query(HolidayCalendar).filter_by(
+            date=date_val, 
+            company_id=comp_id, 
+            business_area_id=ba_id
+        ).first()
+        
         if not h:
             h = HolidayCalendar(
                 date=date_val,
@@ -457,8 +481,8 @@ class LegacyImportService:
                 is_ot_eligible=is_ot,
                 year=year,
                 type=h_type,
-                company_code=company_code,
-                business_area_code=ba_code
+                company_id=comp_id,
+                business_area_id=ba_id
             )
             session.add(h)
         else:
