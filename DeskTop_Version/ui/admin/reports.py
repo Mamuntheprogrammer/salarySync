@@ -241,8 +241,8 @@ class InternalReportWidget(QWidget):
             self.table.insertRow(row)
             
             shift_name = rec.employee.shift.name if rec.employee.shift else "Custom"
-            in_t = rec.clock_in.strftime("%H:%M") if rec.clock_in else "-"
-            out_t = rec.clock_out.strftime("%H:%M") if rec.clock_out else "-"
+            in_t = rec.clock_in.strftime("%I:%M %p") if rec.clock_in else "-"
+            out_t = rec.clock_out.strftime("%I:%M %p") if rec.clock_out else "-"
             
             status = "Present"
             if not rec.clock_in: status = "Absent?" 
@@ -325,9 +325,9 @@ class InternalReportWidget(QWidget):
             self.table.insertRow(row)
             shift_end = "-"
             if rec.employee.shift:
-                shift_end = rec.employee.shift.end_time.strftime("%H:%M")
+                shift_end = rec.employee.shift.end_time.strftime("%I:%M %p")
             
-            out_t = rec.clock_out.strftime("%H:%M") if rec.clock_out else "-"
+            out_t = rec.clock_out.strftime("%I:%M %p") if rec.clock_out else "-"
             
             data = [
                 rec.date.strftime("%Y-%m-%d"),
@@ -372,7 +372,23 @@ class InternalReportWidget(QWidget):
                 Attendance.date >= start,
                 Attendance.date <= end
             ).all()
+
+            # Fetch Short Leaves for the range first
+            sl_records = session.query(ShortLeave).filter(
+                ShortLeave.employee_id == emp.id,
+                ShortLeave.date >= start,
+                ShortLeave.date <= end,
+                ShortLeave.status == "Approved"
+            ).all()
             
+            sl_map = {}
+            total_sl_seconds = 0
+            for sl in sl_records:
+                 d = datetime.combine(date.min, sl.end_time) - datetime.combine(date.min, sl.start_time)
+                 dur = d.total_seconds()
+                 sl_map[sl.date] = sl_map.get(sl.date, 0) + dur
+                 total_sl_seconds += dur
+
             present_days = 0
             total_work_seconds = 0
             total_late_seconds = 0
@@ -382,40 +398,44 @@ class InternalReportWidget(QWidget):
             for att in att_records:
                 if att.clock_in and att.clock_out:
                     present_days += 1
-                    work_dur = (att.clock_out - att.clock_in).total_seconds()
-                    total_work_seconds += work_dur
+                    raw_work_dur = (att.clock_out - att.clock_in).total_seconds()
+                    
+                    # Deduct Short Leave for this day from working time
+                    day_sl_seconds = sl_map.get(att.date, 0)
+                    net_work_dur = str(max(0, raw_work_dur - day_sl_seconds))
+                    net_work_dur = float(net_work_dur)
+                    
+                    total_work_seconds += net_work_dur
                     
                     shift = ShiftService.get_employee_shift_details(emp)
                     if shift:
+                        # Late Calculation
                         sch_in = datetime.combine(att.date, shift["start_time"])
                         if att.clock_in > sch_in:
                             late_diff = (att.clock_in - sch_in).total_seconds()
-                            allowance_sec = shift.get("late_allowance_minutes", 15) * 60
+                            allowance_val = shift.get("late_allowance") or 0
+                            allowance_sec = allowance_val * 60
                             if late_diff > allowance_sec:
                                 late_days_count += 1
                             if late_diff > 0:
                                 total_late_seconds += late_diff
                         
-                        sch_out = datetime.combine(att.date, shift["end_time"])
-                        if att.clock_out > sch_out:
-                            ot_diff = (att.clock_out - sch_out).total_seconds()
-                            if ot_diff > 0:
-                                total_ot_seconds += ot_diff
+                        # OT Calculation (Duration Based: Net Work - Shift Duration)
+                        # Calculate Shift Duration
+                        shift_start = datetime.combine(date.min, shift["start_time"])
+                        shift_end = datetime.combine(date.min, shift["end_time"])
+                        if shift_end < shift_start: # Overnight shift handling if needed, though simple subtraction works for duration if on same day. 
+                            # Assuming simple day shift or duration calculation:
+                            shift_dur = (shift_end - shift_start).total_seconds()
+                            if shift_dur < 0: shift_dur += 24*3600 # Wrap around ? Unlikely given models usually
+                        else:
+                             shift_dur = (shift_end - shift_start).total_seconds()
+                             
+                        daily_ot = max(0, net_work_dur - shift_dur)
+                        total_ot_seconds += daily_ot
             
             absent_days = working_days_count - present_days
             if absent_days < 0: absent_days = 0 
-            
-            sl_records = session.query(ShortLeave).filter(
-                ShortLeave.employee_id == emp.id,
-                ShortLeave.date >= start,
-                ShortLeave.date <= end,
-                ShortLeave.status == "Approved"
-            ).all()
-            
-            sl_seconds = 0
-            for sl in sl_records:
-                 d = datetime.combine(date.min, sl.end_time) - datetime.combine(date.min, sl.start_time)
-                 sl_seconds += d.total_seconds()
                  
             lr_records = session.query(LeaveRequest).filter(
                 LeaveRequest.employee_id == emp.id,
@@ -452,7 +472,7 @@ class InternalReportWidget(QWidget):
                 self._fmt_duration(total_work_seconds),
                 self._fmt_duration(total_late_seconds),
                 self._fmt_duration(total_ot_seconds),
-                self._fmt_duration(sl_seconds),
+                self._fmt_duration(total_sl_seconds),
                 str(leaves_taken_days),
                 str(remaining)
             ]
@@ -518,18 +538,18 @@ class InternalReportWidget(QWidget):
                 
                 if att:
                     if att.clock_in:
-                        in_t = att.clock_in.strftime("%H:%M")
+                        in_t = att.clock_in.strftime("%I:%M %p")
                         status = "Present"
                         # Check Late
                         shift = ShiftService.get_employee_shift_details(emp)
                         if shift:
                             sch_in = datetime.combine(curr, shift["start_time"])
-                            allowance = shift.get("late_allowance_minutes", 15)
+                            allowance = shift.get("late_allowance") or 0
                             if att.clock_in > sch_in + timedelta(minutes=allowance):
                                 status = "Late"
                                 
                     if att.clock_out:
-                         out_t = att.clock_out.strftime("%H:%M")
+                         out_t = att.clock_out.strftime("%I:%M %p")
                 
                 # Check Leaves
                 lr = session.query(LeaveRequest).filter(
@@ -543,7 +563,7 @@ class InternalReportWidget(QWidget):
                     
                 shift_name = emp.shift.name if emp.shift else "Custom"
                 if emp.shift:
-                    s_times = f"{emp.shift.start_time.strftime('%H:%M')}-{emp.shift.end_time.strftime('%H:%M')}"
+                    s_times = f"{emp.shift.start_time.strftime('%I:%M %p')}-{emp.shift.end_time.strftime('%I:%M %p')}"
                 else:
                     s_times = "Custom"
                 

@@ -59,9 +59,9 @@ class PayrollModule(QWidget):
         
         # Table
         self.table = QTableWidget()
-        self.table.setColumnCount(11)
+        self.table.setColumnCount(12)
         self.table.setHorizontalHeaderLabels([
-            "Employee", "Base Salary", "Present Days", "Late Ded.", "Late Days Pen.", "Short Lv Ded.", "OT Pay", "Hol. OT Pay", "Net Salary", "Divisor", "Status"
+            "Employee", "Base Salary", "Work Hrs", "Present Days", "Late Ded.", "Late Days Pen.", "Short Lv Ded.", "OT Pay", "Hol. OT Pay", "Net Salary", "Divisor", "Status"
         ])
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         layout.addWidget(self.table)
@@ -91,17 +91,6 @@ class PayrollModule(QWidget):
             
             if payroll:
                 self.table.insertRow(row)
-                self.table.setItem(row, 0, QTableWidgetItem(payroll["employee_name"]))
-                self.table.setItem(row, 1, QTableWidgetItem(str(payroll["base_salary"])))
-                self.table.setItem(row, 2, QTableWidgetItem(str(payroll["present_days"])))
-                self.table.setItem(row, 3, QTableWidgetItem(str(payroll["late_deduction"])))
-                self.table.setItem(row, 4, QTableWidgetItem(str(payroll["short_leave_deduction"])))
-                self.table.setItem(row, 5, QTableWidgetItem(str(payroll["ot_pay"])))
-                self.table.setItem(row, 6, QTableWidgetItem(str(payroll["holiday_ot_pay"])))
-                self.table.setItem(row, 7, QTableWidgetItem(str(payroll["net_salary"])))
-                self.table.setItem(row, 8, QTableWidgetItem("Draft"))
-                
-                self.table.insertRow(row)
                 
                 # Helper to add editable item
                 def add_item(col, val, editable=False):
@@ -112,19 +101,34 @@ class PayrollModule(QWidget):
 
                 add_item(0, payroll["employee_name"], False)
                 add_item(1, payroll["base_salary"], True)
-                add_item(2, payroll["present_days"], False)
-                add_item(3, payroll["late_deduction"], True)
-                add_item(4, payroll["late_days_penalty"], True)
-                add_item(5, payroll["short_leave_deduction"], True)
-                add_item(6, payroll["ot_pay"], True)
-                add_item(7, payroll["holiday_ot_pay"], True)
-                add_item(8, payroll["net_salary"], True) # Allow manual override
-                add_item(9, payroll.get("divisor_used", 30), False)
-                add_item(10, "Draft", False)
+                
+                # Format Work Hours to HH:MM
+                wh_val = payroll["total_work_hours"]
+                hours = int(wh_val)
+                minutes = int((wh_val - hours) * 60)
+                wh_str = f"{hours}:{minutes:02d}"
+                
+                add_item(2, wh_str, False) # Work Hrs
+                add_item(3, payroll["present_days"], False)
+                add_item(4, payroll["late_deduction"], True)
+                add_item(5, payroll["late_days_penalty"], True)
+                add_item(6, payroll["short_leave_deduction"], True)
+                add_item(7, payroll["ot_pay"], True)
+                add_item(8, payroll["holiday_ot_pay"], True)
+                add_item(9, payroll["net_salary"], True) 
+                add_item(10, payroll.get("divisor_used", 30), False)
+                add_item(11, "Draft", False)
                 
                 export_data.append(payroll)
         
         self.table.itemChanged.connect(self.on_item_changed)
+
+        if export_data:
+            reply = QMessageBox.question(self, "Export", "Payroll Calculated. Do you want to save the output to Excel (CSV)?", QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+            if reply == QMessageBox.StandardButton.Yes:
+                self.export_to_csv(export_data, month, year)
+        else:
+             QMessageBox.information(self, "Info", "No data to export.")
     
     def on_item_changed(self, item):
         # Simple logic: If any deduction/addition changes, update Net Salary?
@@ -133,18 +137,18 @@ class PayrollModule(QWidget):
         # And if Net changes, just accept it.
         # Avoiding cyclic loops: block signals.
         
-        if item.column() in [1, 3, 4, 5, 6, 7]: # Components
+        if item.column() in [1, 4, 5, 6, 7, 8]: # Components (Indices shifted due to inserted column)
              self.recalculate_row(item.row())
 
     def recalculate_row(self, row):
         try:
              self.table.blockSignals(True)
              base = float(self.table.item(row, 1).text() or 0)
-             late = float(self.table.item(row, 3).text() or 0)
-             late_pen = float(self.table.item(row, 4).text() or 0)
-             sl = float(self.table.item(row, 5).text() or 0)
-             ot = float(self.table.item(row, 6).text() or 0)
-             hol = float(self.table.item(row, 7).text() or 0)
+             late = float(self.table.item(row, 4).text() or 0)
+             late_pen = float(self.table.item(row, 5).text() or 0)
+             sl = float(self.table.item(row, 6).text() or 0)
+             ot = float(self.table.item(row, 7).text() or 0)
+             hol = float(self.table.item(row, 8).text() or 0)
              
              # We don't have absent deduction in column? It was part of calculation but not shown separately in table (hidden in Net?).
              # Wait, logic in service: net = gross - late - late_pen - SL - absent + OT + HolOT.
@@ -175,12 +179,7 @@ class PayrollModule(QWidget):
              self.table.blockSignals(False)
         
         # Auto-prompt for export
-        if export_data:
-            reply = QMessageBox.question(self, "Export", "Payroll Calculated. Do you want to save the output to Excel (CSV)?", QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
-            if reply == QMessageBox.StandardButton.Yes:
-                self.export_to_csv(export_data, month, year)
-        else:
-             QMessageBox.information(self, "Info", "No data to export.")
+
 
     def load_filters(self):
         self.company_combo.blockSignals(True)
