@@ -134,6 +134,10 @@ class PayrollService:
         # Get Payroll Config
         config = session.query(PayrollConfig).filter_by(company_id=employee.company_id).first()
         
+        # Fallback to Global Defaults if no company specific config
+        if not config:
+            config = session.query(PayrollConfig).filter(PayrollConfig.company_id.is_(None)).first()
+        
         # Defaults
         ot_mult = config.ot_rate_multiplier if config else 1.5
         hot_mult = config.holiday_ot_rate_multiplier if config else 2.0

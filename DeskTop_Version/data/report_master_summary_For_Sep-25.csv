@@ -1,0 +1,6 @@
+Emp ID,Name,Company,Business Area,Total Days,Working Days,Present,Absent,Late Days,Working (HH:MM),Late (HH:MM),OT (HH:MM),Short Leave (HH:MM),Leaves Taken,Remaining Leave
+500001,Mehedi,APL,Dhaka,30,26,26,0,0,263:33,00:00,10:26,00:00,0,14.0
+500002,Sayem,APL,Dhaka,30,26,25,1,1,257:02,01:02,07:31,00:00,0,14.0
+500003,Mishad,APL,Dhaka,30,26,24,2,0,250:52,00:02,10:52,00:00,0,14.0
+500004,Samiul,APL,Dhaka,30,26,26,0,0,274:57,00:00,14:57,00:00,0,14.0
+500005,Shantu,APL,Dhaka,30,26,26,0,1,266:37,00:26,06:47,00:00,0,14.0

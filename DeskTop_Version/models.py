@@ -195,7 +195,7 @@ class PayrollConfig(Base):
     __tablename__ = 'payroll_config'
     
     id = Column(Integer, primary_key=True)
-    company_id = Column(Integer, ForeignKey('companies.id'), unique=True, nullable=False)
+    company_id = Column(Integer, ForeignKey('companies.id'), unique=True, nullable=True)
     
     # Rates
     ot_rate_multiplier = Column(Float, default=1.5) # x times hourly rate
