@@ -66,6 +66,50 @@ class MainWindow(QMainWindow):
                 border: 1px solid #ddd;
                 font-weight: bold;
             }
+
+            /* Calendar Popup (QDateEdit calendar) */
+            QCalendarWidget QWidget {
+                background-color: #ffffff;
+                color: #333333;
+            }
+            QCalendarWidget QToolButton {
+                color: #333333;
+                background-color: #f0f0f0;
+                border: 1px solid #cccccc;
+                border-radius: 3px;
+                padding: 4px 8px;
+                font-weight: bold;
+            }
+            QCalendarWidget QToolButton:hover {
+                background-color: #e3f2fd;
+                color: #1565c0;
+            }
+            QCalendarWidget QToolButton::menu-indicator {
+                image: none;
+            }
+            QCalendarWidget QMenu {
+                color: #333333;
+                background-color: #ffffff;
+            }
+            QCalendarWidget QSpinBox {
+                color: #333333;
+                background-color: #ffffff;
+                border: 1px solid #cccccc;
+                border-radius: 3px;
+                padding: 2px;
+            }
+            QCalendarWidget QAbstractItemView {
+                color: #333333;
+                background-color: #ffffff;
+                selection-background-color: #2196F3;
+                selection-color: #ffffff;
+            }
+            QCalendarWidget QAbstractItemView:enabled {
+                color: #333333;
+            }
+            QCalendarWidget QAbstractItemView:disabled {
+                color: #aaaaaa;
+            }
         """)
         
         self.central_widget = QWidget()

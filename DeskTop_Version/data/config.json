@@ -9,7 +9,7 @@
         "enabled": true,
         "frequency": "daily",
         "location": "E:\\attensync\\salarySync\\DeskTop_Version\\backups",
-        "last_backup_date": "2026-02-16"
+        "last_backup_date": "2026-02-27"
     },
     "online_mode": false,
     "cloud_sync": {
