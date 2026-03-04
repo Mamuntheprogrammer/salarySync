@@ -2,7 +2,7 @@ import openpyxl
 from openpyxl.styles import Font
 from sqlalchemy.orm import Session
 from database import get_db_session
-from models import Company, BusinessArea, Shift, Designation, DesignationSubcategory, Employee, HolidayCalendar, LeaveQuota, Attendance
+from models import Company, BusinessArea, Shift, Designation, DesignationSubcategory, Employee, HolidayCalendar, LeaveQuota, Attendance, ShortLeave
 import os
 
 from datetime import datetime, time, date
@@ -99,12 +99,27 @@ class ImportService:
         ])
         
         # 9. Attendance
-        # Fields: employee_code, date (YYYY-MM-DD), clock_in (HH:MM), clock_out (HH:MM)
-        create_sheet("Attendance", ["employee_code", "date (YYYY-MM-DD)", "clock_in (HH:MM)", "clock_out (HH:MM)"], [
-            ["1001", "2024-01-01", "09:05", "18:10"], ["1001", "2024-01-02", "08:55", "18:05"], ["1001", "2024-01-03", "09:10", "18:15"],
-            ["1002", "2024-01-01", "06:05", "14:05"], ["1002", "2024-01-02", "06:00", "14:10"], ["1002", "2024-01-03", "06:02", "14:00"],
-            ["1003", "2024-01-01", "09:00", "18:00"], ["1003", "2024-01-02", "09:00", "18:00"], ["1003", "2024-01-03", "09:00", "18:00"],
-            ["1004", "2024-01-01", "14:10", "22:15"]
+        # Fields: employee_code, emp_id, date (YYYY-MM-DD), clock_in (HH:MM), clock_out (HH:MM)
+        create_sheet("Attendance", ["employee_code", "emp_id", "date (YYYY-MM-DD)", "clock_in (HH:MM)", "clock_out (HH:MM)"], [
+            ["1001", "", "2024-01-01", "09:05", "18:10"], ["1001", "", "2024-01-02", "08:55", "18:05"], ["1001", "", "2024-01-03", "09:10", "18:15"],
+            ["1002", "", "2024-01-01", "06:05", "14:05"], ["1002", "", "2024-01-02", "06:00", "14:10"], ["1002", "", "2024-01-03", "06:02", "14:00"],
+            ["1003", "", "2024-01-01", "09:00", "18:00"], ["1003", "", "2024-01-02", "09:00", "18:00"], ["1003", "", "2024-01-03", "09:00", "18:00"],
+            ["1004", "", "2024-01-01", "14:10", "22:15"]
+        ])
+        
+        # 10. ShortLeave
+        # Fields: employee_code, emp_id, date (YYYY-MM-DD), start_time (HH:MM), end_time (HH:MM), reason
+        create_sheet("ShortLeave", ["employee_code", "emp_id", "date (YYYY-MM-DD)", "start_time (HH:MM)", "end_time (HH:MM)", "reason"], [
+            ["1001", "", "2024-01-05", "10:00", "11:00", "Doctor appointment"],
+            ["1002", "", "2024-01-06", "14:00", "15:30", "Bank work"],
+            ["1003", "", "2024-01-07", "09:30", "10:00", "Personal errand"],
+            ["1004", "", "2024-01-08", "11:00", "12:00", "Emergency"],
+            ["1001", "", "2024-01-10", "15:00", "16:00", "Family matter"],
+            ["1002", "", "2024-01-11", "10:30", "11:30", "Medical checkup"],
+            ["1003", "", "2024-01-12", "13:00", "14:00", "Dental"],
+            ["1004", "", "2024-01-14", "09:00", "09:30", "Late arrival"],
+            ["1001", "", "2024-01-15", "16:00", "17:00", "Early exit"],
+            ["", "5",  "2024-01-16", "10:00", "11:00", "Example using emp_id only"]
         ])
         
         wb.save(file_path)
@@ -412,21 +427,27 @@ class ImportService:
             if "Attendance" in selected_sheets and "Attendance" in wb.sheetnames:
                 ws = wb["Attendance"]
                 for row in ws.iter_rows(min_row=2, values_only=True):
-                    if not row[0]: continue
-                    # employee_code, date (YYYY-MM-DD), clock_in (HH:MM), clock_out (HH:MM)
-                    acode = str(row[0])
+                    if not row[0] and not row[1]: continue
+                    # employee_code, emp_id, date (YYYY-MM-DD), clock_in (HH:MM), clock_out (HH:MM)
+                    acode = str(row[0]).strip() if row[0] else ""
+                    emp_id_val = str(row[1]).strip() if row[1] else ""
                     date_val = None
-                    if isinstance(row[1], datetime): date_val = row[1].date()
-                    elif isinstance(row[1], date): date_val = row[1]
-                    elif isinstance(row[1], str):
-                        try: date_val = datetime.strptime(row[1], "%Y-%m-%d").date()
+                    if isinstance(row[2], datetime): date_val = row[2].date()
+                    elif isinstance(row[2], date): date_val = row[2]
+                    elif isinstance(row[2], str):
+                        try: date_val = datetime.strptime(row[2], "%Y-%m-%d").date()
                         except: pass
                         
                     if not date_val: continue
                     
-                    emp = session.query(Employee).filter_by(attendance_code=acode).first()
+                    # Dual lookup: by attendance_code first, then by emp_id
+                    emp = None
+                    if acode:
+                        emp = session.query(Employee).filter_by(attendance_code=acode).first()
+                    if not emp and emp_id_val and emp_id_val.isdigit():
+                        emp = session.query(Employee).filter_by(id=int(emp_id_val)).first()
                     if not emp: 
-                        errors.append(f"Attendance: Employee {acode} not found")
+                        errors.append(f"Attendance: Employee '{acode or emp_id_val}' not found")
                         continue
                         
                     # Parse Times
@@ -439,47 +460,83 @@ class ImportService:
                             except: return None
                         return None
                         
-                    cin = parse_t(row[2])
-                    cout = parse_t(row[3])
+                    cin = parse_t(row[3])
+                    cout = parse_t(row[4])
                     
                     # Check duplicate
                     att = session.query(Attendance).filter_by(employee_id=emp.id, date=date_val).first()
                     if not att:
-                        # Auto-calc stats?
-                        duty_h = 0.0
-                        ot_h = 0.0
-                        late_h = 0.0
-                        
-                        if cin and cout:
-                             duty_h = round((cout - cin).total_seconds() / 3600, 2)
-                             
-                             # Simple Late/OT logic based on assigned Shift
-                             if emp.shift:
-                                 s_in = datetime.combine(date_val, emp.shift.start_time)
-                                 s_out = datetime.combine(date_val, emp.shift.end_time)
-                                 
-                                 # Late
-                                 if cin > s_in:
-                                     diff_min = (cin - s_in).total_seconds() / 60
-                                     if diff_min > emp.shift.late_allowance_minutes:
-                                         late_h = round(diff_min / 60, 2)
-                                         
-                                 # OT
-                                 if cout > s_out:
-                                     ot_min = (cout - s_out).total_seconds() / 60
-                                     if ot_min > 0:
-                                         ot_h = round(ot_min / 60, 2)
-                        
                         att = Attendance(
                             employee_id=emp.id,
                             date=date_val,
                             clock_in=cin,
-                            clock_out=cout,
-                            duty_time_hours=duty_h,
-                            late_hours=late_h,
-                            overtime_hours=ot_h
+                            clock_out=cout
                         )
                         session.add(att)
+                        count += 1
+                session.flush()
+
+            # 10. ShortLeave
+            if "ShortLeave" in selected_sheets and "ShortLeave" in wb.sheetnames:
+                ws = wb["ShortLeave"]
+                for row in ws.iter_rows(min_row=2, values_only=True):
+                    if not row[0] and not row[1]: continue
+                    # employee_code, emp_id, date (YYYY-MM-DD), start_time (HH:MM), end_time (HH:MM), reason
+                    acode = str(row[0]).strip() if row[0] else ""
+                    emp_id_val = str(row[1]).strip() if row[1] else ""
+                    date_val = None
+                    if isinstance(row[2], datetime): date_val = row[2].date()
+                    elif isinstance(row[2], date): date_val = row[2]
+                    elif isinstance(row[2], str):
+                        try: date_val = datetime.strptime(row[2], "%Y-%m-%d").date()
+                        except: pass
+
+                    if not date_val: continue
+
+                    # Dual lookup: by attendance_code first, then by emp_id
+                    emp = None
+                    if acode:
+                        emp = session.query(Employee).filter_by(attendance_code=acode).first()
+                    if not emp and emp_id_val and emp_id_val.isdigit():
+                        emp = session.query(Employee).filter_by(id=int(emp_id_val)).first()
+                    if not emp:
+                        errors.append(f"ShortLeave: Employee '{acode or emp_id_val}' not found")
+                        continue
+
+                    # Parse start/end times
+                    def parse_sl_time(t_val):
+                        if not t_val: return None
+                        if isinstance(t_val, time): return t_val
+                        if isinstance(t_val, datetime): return t_val.time()
+                        if isinstance(t_val, str):
+                            try: return datetime.strptime(t_val, "%H:%M").time()
+                            except:
+                                try: return datetime.strptime(t_val, "%H:%M:%S").time()
+                                except: return None
+                        return None
+
+                    start_t = parse_sl_time(row[3])
+                    end_t = parse_sl_time(row[4])
+                    reason = str(row[5]) if row[5] else ""
+
+                    if not start_t or not end_t:
+                        errors.append(f"ShortLeave: Invalid times for {acode or emp_id_val} on {date_val}")
+                        continue
+
+                    # Skip duplicates (same employee, date, start_time)
+                    exists = session.query(ShortLeave).filter_by(
+                        employee_id=emp.id, date=date_val, start_time=start_t
+                    ).first()
+                    if not exists:
+                        sl = ShortLeave(
+                            employee_id=emp.id,
+                            date=date_val,
+                            start_time=start_t,
+                            end_time=end_t,
+                            reason=reason,
+                            status="Pending"
+                        )
+                        session.add(sl)
                         count += 1
                 session.flush()
 

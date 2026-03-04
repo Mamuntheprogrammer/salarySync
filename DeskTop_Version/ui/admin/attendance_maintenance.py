@@ -38,11 +38,12 @@ class AttendanceMaintenance(QWidget):
         
         # Table
         self.table = QTableWidget()
-        self.table.setColumnCount(5)
+        self.table.setColumnCount(6)
         self.table.setHorizontalHeaderLabels([
-            "ID", "Employee", "In Time", "Out Time", "Action"
+            "Attendance Code", "Emp ID", "Employee", "In Time", "Out Time", "Action"
         ])
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        self.table.horizontalHeader().setSectionResizeMode(5, QHeaderView.ResizeMode.ResizeToContents)
         layout.addWidget(self.table)
 
 
@@ -59,33 +60,42 @@ class AttendanceMaintenance(QWidget):
         
         self.table.setRowCount(0)
         for row, rec in enumerate(records):
-            self.table.insertRow(row)
-            self.table.setItem(row, 0, QTableWidgetItem(str(rec.id)))
-            self.table.setItem(row, 1, QTableWidgetItem(rec.employee.full_name))
-            
-            time_fmt_str = Config.get_time_fmt()
-            
-            in_time = rec.clock_in.strftime(time_fmt_str) if rec.clock_in else "-"
-            out_time = rec.clock_out.strftime(time_fmt_str) if rec.clock_out else "-"
-            
-            self.table.setItem(row, 2, QTableWidgetItem(in_time))
-            self.table.setItem(row, 3, QTableWidgetItem(out_time))
-            
-            # Actions
-            action_widget = QWidget()
-            action_layout = QHBoxLayout(action_widget)
-            action_layout.setContentsMargins(2, 2, 2, 2)
-            
-            btn_edit = QPushButton("Edit")
-            btn_edit.clicked.connect(lambda checked, r=rec: self.edit_record(r))
-            action_layout.addWidget(btn_edit)
-            
-            btn_del = QPushButton("Delete")
-            btn_del.setStyleSheet("color: red")
-            btn_del.clicked.connect(lambda ch, x=rec: self.delete_record(x))
-            action_layout.addWidget(btn_del)
-            
-            self.table.setCellWidget(row, 4, action_widget)
+            try:
+                emp = rec.employee
+                att_code = emp.attendance_code if emp else "-"
+                emp_id = str(emp.id) if emp else "-"
+                emp_name = emp.full_name if emp else "(Unknown)"
+
+                self.table.insertRow(row)
+                self.table.setItem(row, 0, QTableWidgetItem(att_code))
+                self.table.setItem(row, 1, QTableWidgetItem(emp_id))
+                self.table.setItem(row, 2, QTableWidgetItem(emp_name))
+                
+                time_fmt_str = Config.get_time_fmt()
+                
+                in_time = rec.clock_in.strftime(time_fmt_str) if rec.clock_in else "-"
+                out_time = rec.clock_out.strftime(time_fmt_str) if rec.clock_out else "-"
+                
+                self.table.setItem(row, 3, QTableWidgetItem(in_time))
+                self.table.setItem(row, 4, QTableWidgetItem(out_time))
+                
+                # Actions
+                action_widget = QWidget()
+                action_layout = QHBoxLayout(action_widget)
+                action_layout.setContentsMargins(2, 2, 2, 2)
+                
+                btn_edit = QPushButton("Edit")
+                btn_edit.clicked.connect(lambda checked, r=rec: self.edit_record(r))
+                action_layout.addWidget(btn_edit)
+                
+                btn_del = QPushButton("Delete")
+                btn_del.setStyleSheet("color: red")
+                btn_del.clicked.connect(lambda ch, x=rec: self.delete_record(x))
+                action_layout.addWidget(btn_del)
+                
+                self.table.setCellWidget(row, 5, action_widget)
+            except Exception as row_err:
+                print(f"[AttendanceMaintenance] Error loading row {row}: {row_err}")
 
     def delete_record(self, record):
         confirm = QMessageBox.question(self, "Confirm", f"Delete attendance record for {record.employee.full_name}?", QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)

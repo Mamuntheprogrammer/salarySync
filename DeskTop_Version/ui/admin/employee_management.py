@@ -29,10 +29,10 @@ class EmployeeManagement(QWidget):
         
         # Table
         self.table = QTableWidget()
-        self.table.setColumnCount(9)
-        self.table.setHorizontalHeaderLabels(["Code", "Name", "Company", "Area", "Shift", "Designation", "Salary", "Status", "Actions"])
+        self.table.setColumnCount(10)
+        self.table.setHorizontalHeaderLabels(["Attendance Code", "Emp ID", "Name", "Company", "Area", "Shift", "Designation", "Salary", "Status", "Actions"])
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
-        self.table.horizontalHeader().setSectionResizeMode(8, QHeaderView.ResizeMode.ResizeToContents) # Fix underflow
+        self.table.horizontalHeader().setSectionResizeMode(9, QHeaderView.ResizeMode.ResizeToContents) # Fix underflow
         layout.addWidget(self.table)
         
     def load_data(self):
@@ -43,21 +43,21 @@ class EmployeeManagement(QWidget):
         for row, emp in enumerate(employees):
             self.table.insertRow(row)
             self.table.setItem(row, 0, QTableWidgetItem(emp.attendance_code))
-            self.table.setItem(row, 1, QTableWidgetItem(emp.full_name))
-            self.table.setItem(row, 2, QTableWidgetItem(emp.company.name if emp.company else "-"))
-            self.table.setItem(row, 3, QTableWidgetItem(emp.business_area.name if emp.business_area else "-"))
+            self.table.setItem(row, 1, QTableWidgetItem(str(emp.id)))
+            self.table.setItem(row, 2, QTableWidgetItem(emp.full_name))
+            self.table.setItem(row, 3, QTableWidgetItem(emp.company.name if emp.company else "-"))
+            self.table.setItem(row, 4, QTableWidgetItem(emp.business_area.name if emp.business_area else "-"))
             
             shift_name = emp.shift.name if emp.shift else ("Custom" if emp.custom_shift_start else "None")
-            shift_name = emp.shift.name if emp.shift else ("Custom" if emp.custom_shift_start else "None")
-            self.table.setItem(row, 4, QTableWidgetItem(shift_name))
+            self.table.setItem(row, 5, QTableWidgetItem(shift_name))
             
             designation_str = emp.designation.name if emp.designation else "-"
             if emp.designation_subcategory:
                 designation_str += f" - {emp.designation_subcategory.name}"
-            self.table.setItem(row, 5, QTableWidgetItem(designation_str))
+            self.table.setItem(row, 6, QTableWidgetItem(designation_str))
             
             # Salary
-            self.table.setItem(row, 6, QTableWidgetItem(str(emp.salary_base)))
+            self.table.setItem(row, 7, QTableWidgetItem(str(emp.salary_base)))
             
             # Status
             status_str = "Active" if emp.is_active else "Inactive"
@@ -66,7 +66,7 @@ class EmployeeManagement(QWidget):
                 status_item.setForeground(Qt.GlobalColor.green)
             else:
                  status_item.setForeground(Qt.GlobalColor.red)
-            self.table.setItem(row, 7, status_item)
+            self.table.setItem(row, 8, status_item)
             
             # Actions
             action_widget = QWidget()
@@ -88,7 +88,7 @@ class EmployeeManagement(QWidget):
             btn_toggle.clicked.connect(lambda ch, e=emp: self.toggle_status(e))
             action_layout.addWidget(btn_toggle)
             
-            self.table.setCellWidget(row, 8, action_widget)
+            self.table.setCellWidget(row, 9, action_widget)
 
     def toggle_status(self, emp):
         action = "deactivate" if emp.is_active else "activate"

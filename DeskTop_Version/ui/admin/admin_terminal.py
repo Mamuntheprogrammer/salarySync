@@ -87,9 +87,9 @@ class AdminTerminal(QWidget):
         layout.addWidget(selection_frame)
         
         # Code Entry (Manual or Auto-populated)
-        layout.addWidget(QLabel("Attendance Code:"))
+        layout.addWidget(QLabel("ID or Attendance Code:"))
         self.code_display = QLineEdit()
-        self.code_display.setPlaceholderText("Enter or Select Employee")
+        self.code_display.setPlaceholderText("Enter ID or Attendance Code")
         self.code_display.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.code_display.setFont(QFont("Arial", 20))
         # No Password Echo Mode (Visible)
@@ -168,7 +168,8 @@ class AdminTerminal(QWidget):
             session = get_db_session()
             emps = session.query(Employee).filter_by(business_area_id=ba_id).all()
             for emp in emps:
-                self.emp_combo.addItem(f"{emp.attendance_code} - {emp.full_name}", emp.attendance_code)
+                # Store attendance_code as data so it also works for clock-in/out
+                self.emp_combo.addItem(f"{emp.id} - {emp.attendance_code} - {emp.full_name}", emp.attendance_code)
         
         self.emp_combo.blockSignals(False)
 
@@ -180,9 +181,9 @@ class AdminTerminal(QWidget):
             self.code_display.clear()
 
     def get_code(self):
-        code = self.code_display.text()
-        if not code or len(code) != 6:
-            self.status_label.setText("Please enter or select a valid 6-digit code")
+        code = self.code_display.text().strip()
+        if not code:
+            self.status_label.setText("Please enter or select an ID or Attendance Code")
             return None
         return code
         
@@ -207,6 +208,8 @@ class AdminTerminal(QWidget):
         
         session = get_db_session()
         employee = session.query(Employee).filter_by(attendance_code=code).first()
+        if not employee and code.isdigit():
+            employee = session.query(Employee).filter_by(id=int(code)).first()
         if not employee:
              self.status_label.setText("Employee not found")
              return

@@ -107,9 +107,15 @@ class InternalReportWidget(QWidget):
         # Table
         self.table = QTableWidget()
         self.table.setAlternatingRowColors(True)
-        # Enable resizing
-        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
-        self.table.horizontalHeader().setStretchLastSection(True) 
+        # Header: allow word wrap by fixing height and enabling wrap
+        header = self.table.horizontalHeader()
+        header.setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
+        header.setStretchLastSection(True)
+        header.setDefaultAlignment(Qt.AlignmentFlag.AlignCenter | Qt.AlignmentFlag.AlignVCenter)
+        header.setMinimumSectionSize(80)
+        header.setDefaultSectionSize(120)
+        header.setFixedHeight(48)   # Two-line header height
+        self.table.setWordWrap(True)
         layout.addWidget(self.table)
         
         # Initial Setup
@@ -172,24 +178,24 @@ class InternalReportWidget(QWidget):
         
     def setup_table_columns(self):
         if self.mode == "report_daily":
-            cols = ["Date", "Emp ID", "Name", "Shift", "In", "Out", "Status"]
+            cols = ["Date", "Attendance Code", "Name", "Shift", "In", "Out", "Status"]
         elif self.mode == "report_monthly":
-            cols = ["Emp ID", "Name", "Month", "Present Days"]
+            cols = ["Attendance Code", "Name", "Month", "Present Days"]
         elif self.mode == "report_leave":
-            cols = ["Date", "Emp ID", "Name", "Type", "Duration/Reason", "Status"]
+            cols = ["Date", "Attendance Code", "Name", "Type", "Duration/Reason", "Status"]
         elif self.mode == "report_late":
             cols = [] # Report disabled
         elif self.mode == "report_overtime":
-            cols = ["Date", "Emp ID", "Name", "Clock Out", "Shift End", "OT Duration (h)"]
+            cols = ["Date", "Attendance Code", "Name", "Clock Out", "Shift End", "OT Duration (h)"]
         elif self.mode == "report_master_summary":
             cols = [
-                "Emp ID", "Name", "Company", "Business Area", 
+                "Attendance Code", "Emp ID", "Name", "Company", "Business Area", 
                 "Total Days", "Working Days", "Present", "Absent", "Late Days",
                 "Working (HH:MM)", "Late (HH:MM)", "OT (HH:MM)", "Short Leave (HH:MM)", 
                 "Leaves Taken", "Remaining Leave"
             ]
         elif self.mode == "report_month_wise_attendance":
-            cols = ["Date", "Emp ID", "Name", "Company", "Business Area", "Shift", "In", "Out", "Status"]
+            cols = ["Date", "Attendance Code", "Emp ID", "Name", "Company", "Business Area", "Shift", "In", "Out", "Status"]
         else:
             cols = []
             
@@ -461,6 +467,7 @@ class InternalReportWidget(QWidget):
             
             data = [
                 emp.attendance_code,
+                str(emp.id),
                 emp.full_name,
                 emp.company.name if emp.company else "-",
                 emp.business_area.name if emp.business_area else "-",
@@ -570,6 +577,7 @@ class InternalReportWidget(QWidget):
                 data = [
                     curr.strftime("%Y-%m-%d"),
                     emp.attendance_code,
+                    str(emp.id),
                     emp.full_name,
                     emp.company.name if emp.company else "-",
                     emp.business_area.name if emp.business_area else "-",

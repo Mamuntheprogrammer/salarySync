@@ -37,8 +37,8 @@ class LegacyImportService:
             "dummy": [500001, 'Mehedi', '2022-05-12', 10000, 1000, 10, 'Manager', 'Level-1', 'Morning-1', None, None, True]
         },
         "attendance": {
-            "headers": ['attendance_code', 'date', 'clock_in', 'clock_out'],
-            "dummy": [500001, '2026-01-01', '10:21 AM', '08:45 PM']
+            "headers": ['attendance_code', 'employee_id', 'date', 'clock_in', 'clock_out'],
+            "dummy": [500001, 1, '2026-01-01', '10:21 AM', '08:45 PM']
         },
         "weekly_holidays": {
             "headers": ['day_of_week', 'company_code', 'business_area_code', 'shift_name'],
@@ -53,8 +53,8 @@ class LegacyImportService:
             "dummy": ['2026-01-15', 'Election ', False, 2026, 'Govment', 1000, 10]
         },
         "short_leaves": {
-            "headers": ['attendance_code', 'date', 'start_time', 'end_time', 'reason', 'status'],
-            "dummy": [500001, '2026-01-03', '10:00 AM', '12:00 PM', 'Personal', 'Approved']
+            "headers": ['attendance_code', 'employee_id', 'date', 'start_time', 'end_time', 'reason', 'status'],
+            "dummy": [500001, 1, '2026-01-03', '10:00 AM', '12:00 PM', 'Personal', 'Approved']
         },
     }
 
@@ -313,15 +313,27 @@ class LegacyImportService:
     @staticmethod
     def _import_attendance(session, data):
         code_raw = data.get('attendance_code')
-        if not code_raw or str(code_raw).lower() == 'none': return False
+        emp_id_raw = data.get('employee_id')
+        
+        if (not code_raw or str(code_raw).lower() == 'none') and (not emp_id_raw or str(emp_id_raw).lower() == 'none'):
+            return False # Skip row if both are missing
+        
+        emp = None
+        if code_raw and str(code_raw).lower() != 'none':
+            code = str(code_raw).strip()
+            emp = session.query(Employee).filter_by(attendance_code=code).first()
             
-        code = str(code_raw).strip()
+        if not emp and emp_id_raw and str(emp_id_raw).lower() != 'none':
+            try:
+                emp = session.query(Employee).filter_by(id=int(emp_id_raw)).first()
+            except ValueError:
+                pass
+                
+        if not emp: 
+            raise ValueError("Employee not found using provided attendance_code or employee_id")
+
         date_val = LegacyImportService._parse_date(data.get('date'))
-        
         if not date_val: raise ValueError("Missing date")
-        
-        emp = session.query(Employee).filter_by(attendance_code=code).first()
-        if not emp: raise ValueError(f"Employee {code} not found")
         
         att = session.query(Attendance).filter_by(employee_id=emp.id, date=date_val).first()
         if not att:
@@ -495,18 +507,31 @@ class LegacyImportService:
     @staticmethod
     def _import_short_leaves(session, data):
         code_raw = data.get('attendance_code')
-        if not code_raw or str(code_raw).lower() == 'none': return False
+        emp_id_raw = data.get('employee_id')
         
-        code = str(code_raw).strip()
+        if (not code_raw or str(code_raw).lower() == 'none') and (not emp_id_raw or str(emp_id_raw).lower() == 'none'):
+            return False
+
+        emp = None
+        if code_raw and str(code_raw).lower() != 'none':
+            code = str(code_raw).strip()
+            emp = session.query(Employee).filter_by(attendance_code=code).first()
+            
+        if not emp and emp_id_raw and str(emp_id_raw).lower() != 'none':
+            try:
+                emp = session.query(Employee).filter_by(id=int(emp_id_raw)).first()
+            except ValueError:
+                pass
+                
+        if not emp: 
+            raise ValueError("Employee not found using provided attendance_code or employee_id")
+
         date_val = LegacyImportService._parse_date(data.get('date'))
         start = LegacyImportService._parse_time(data.get('start_time'))
         end = LegacyImportService._parse_time(data.get('end_time'))
         
         if not date_val or not start or not end: 
             raise ValueError("Missing date, start_time or end_time")
-            
-        emp = session.query(Employee).filter_by(attendance_code=code).first()
-        if not emp: raise ValueError(f"Employee {code} not found")
         
         reason = data.get('reason', '')
         status = data.get('status', 'Pending').capitalize()

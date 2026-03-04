@@ -41,12 +41,11 @@ class EmployeeTerminal(QWidget):
 
         # Display
         self.code_display = QLineEdit()
-        self.code_display.setPlaceholderText("Enter 6-Digit Code")
+        self.code_display.setPlaceholderText("Enter Attendance Code or Employee ID")
         self.code_display.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.code_display.setFont(QFont("Arial", 24))
         self.code_display.setEchoMode(QLineEdit.EchoMode.Password)
         self.code_display.setReadOnly(False) # Allow keyboard input
-        self.code_display.setMaxLength(6) # Limit to 6 chars
         self.code_display.setStyleSheet("border: none; padding: 10px; background: transparent;")
         
         input_layout.addWidget(self.code_display)
@@ -137,13 +136,12 @@ class EmployeeTerminal(QWidget):
         elif text == 'X':
             self.code_display.setText(current[:-1])
         else:
-            if len(current) < 6:
-                self.code_display.setText(current + text)
+            self.code_display.setText(current + text)
                 
     def get_code(self):
-        code = self.code_display.text()
-        if len(code) != 6:
-            self.status_label.setText("Please enter a 6-digit code")
+        code = self.code_display.text().strip()
+        if not code:
+            self.status_label.setText("Please enter an Attendance Code or Employee ID")
             return None
         return code
         
@@ -170,8 +168,10 @@ class EmployeeTerminal(QWidget):
         
         session = get_db_session()
         employee = session.query(Employee).filter_by(attendance_code=code).first()
+        if not employee and code.isdigit():
+            employee = session.query(Employee).filter_by(id=int(code)).first()
         if not employee:
-            self.status_label.setText("Invalid Code")
+            self.status_label.setText("Invalid Code / Employee ID")
             self.status_label.setStyleSheet("color: red; font-weight: bold; font-size: 14px;")
             return
             

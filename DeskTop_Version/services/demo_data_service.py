@@ -13,35 +13,47 @@ class DemoDataService:
             
         try:
             # 1. Company & Areas
-            comp = session.query(Company).filter_by(code="DEMO").first()
+            # Use same codes as the import template sample data so demo data
+            # is consistent with what users see if they download/import a template.
+            comp = session.query(Company).filter_by(code="HQ01").first()
             if not comp:
-                comp = Company(code="DEMO", name="Demo Corp Ltd.")
+                comp = Company(code="HQ01", name="Global Tech Solutions")
                 session.add(comp)
                 session.flush()
-                
-            areas = ["HR", "IT", "Sales", "Operations"]
-            db_areas = []
-            for i, area_name in enumerate(areas):
-                ba = session.query(BusinessArea).filter_by(code=f"D0{i+1}", company_id=comp.id).first()
+
+            area_defs = [
+                ("HR",  "Human Resources"),
+                ("IT",  "Information Technology"),
+                ("MKT", "Marketing"),
+                ("SAL", "Sales"),
+                ("SUP", "Support"),
+                ("FIN", "Finance"),
+            ]
+            db_areas_map = {}
+            for area_code, area_name in area_defs:
+                ba = session.query(BusinessArea).filter_by(code=area_code, company_id=comp.id).first()
                 if not ba:
-                    ba = BusinessArea(code=f"D0{i+1}", name=area_name, company_id=comp.id)
+                    ba = BusinessArea(code=area_code, name=area_name, company_id=comp.id)
                     session.add(ba)
-                db_areas.append(ba)
+                db_areas_map[area_code] = ba
             session.flush()
             
-            # 2. Shifts
+            # 2. Shifts – matching import template
             shifts = [
-                {"name": "General", "start": time(9,0), "end": time(18,0)},
-                {"name": "Morning", "start": time(6,0), "end": time(14,0)},
-                {"name": "Evening", "start": time(14,0), "end": time(22,0)},
+                {"name": "General", "start": time(9,0),  "end": time(18,0), "late": 15},
+                {"name": "Morning", "start": time(6,0),  "end": time(14,0), "late": 10},
+                {"name": "Evening", "start": time(14,0), "end": time(22,0), "late": 10},
+                {"name": "Night",   "start": time(22,0), "end": time(6,0),  "late": 15},
+                {"name": "Split 1", "start": time(8,0),  "end": time(17,0), "late": 15},
             ]
-            db_shifts = []
+            db_shifts_map = {}
             for s in shifts:
                 shift = session.query(Shift).filter_by(name=s["name"]).first()
                 if not shift:
-                    shift = Shift(name=s["name"], start_time=s["start"], end_time=s["end"], late_allowance_minutes=15)
+                    shift = Shift(name=s["name"], start_time=s["start"], end_time=s["end"],
+                                  late_allowance_minutes=s["late"])
                     session.add(shift)
-                db_shifts.append(shift)
+                db_shifts_map[s["name"]] = shift
             session.flush()
             
             # 3. Designations
@@ -50,8 +62,6 @@ class DemoDataService:
                 "Developer": ["Frontend", "Backend", "Fullstack"],
                 "Sales Exec": ["Field", "In-house"]
             }
-            db_desigs = [] # List of (deg, sub) tuples
-            
             for d_name, subs in desigs.items():
                 deg = session.query(Designation).filter_by(name=d_name).first()
                 if not deg:
@@ -64,41 +74,51 @@ class DemoDataService:
                     if not sub:
                         sub = DesignationSubcategory(name=sub_name, designation_id=deg.id)
                         session.add(sub)
-                    db_desigs.append((deg, sub))
             session.flush()
             
-            # 4. Employees
-            # Create 10 demo employees
-            names = ["John Doe", "Jane Smith", "Alice Johnson", "Bob Brown", "Charlie Davis", 
-                     "Eva Wilson", "Frank Miller", "Grace Lee", "Henry Taylor", "Ivy Clark"]
-            
+            # 4. Employees – mirroring the import template's sample rows exactly
+            # (attendance codes 1001-1010, same company/area/shift references)
+            emp_defs = [
+                # (acode,  full_name,         area_code, shift_name, desig_name,  sub_name,    salary, active)
+                ("1001", "John Doe",         "HR",  "General", "Manager",    "Senior",   50000, True),
+                ("1002", "Jane Smith",        "IT",  "Morning", "Developer",  "Backend",  45000, True),
+                ("1003", "Alice Johnson",     "IT",  "Morning", "Developer",  "Frontend", 42000, True),
+                ("1004", "Bob Brown",         "MKT", "Evening", "Manager",    "Junior",   35000, True),
+                ("1005", "Charlie Davis",     "SAL", "Evening", "Sales Exec", "Field",    30000, True),
+                ("1006", "Eva Wilson",        "SUP", "Night",   "Manager",    "Senior",   40000, True),
+                ("1007", "Frank Miller",      "HR",  "General", "Developer",  "Fullstack",15000, True),
+                ("1008", "Grace Lee",         "HR",  "Night",   "Manager",    "Senior",   90000, True),
+                ("1009", "Henry Taylor",      "FIN", "General", "Developer",  "Backend",  38000, False),
+                ("1010", "Ivy Clark",         "IT",  "Split 1", "Developer",  "Frontend", 41000, True),
+            ]
+
             employees = []
-            for i, name in enumerate(names):
-                acode = f"100{i}"
+            for acode, fname, area_code, shift_name, dname, subname, salary, active in emp_defs:
                 emp = session.query(Employee).filter_by(attendance_code=acode).first()
                 if not emp:
-                    # Random assignment
-                    deg, sub = random.choice(db_desigs)
-                    
-                    # session.add(ba) acts weird if ba isn't flushed or re-queried properly in loop? 
-                    # Assuming db_areas are attached or usable.
-                    # safer to re-query if detached, but flush should keep them attached in same session.
-                    
+                    # Resolve designation and subcategory
+                    deg = session.query(Designation).filter_by(name=dname).first()
+                    sub = None
+                    if deg and subname:
+                        sub = session.query(DesignationSubcategory).filter_by(
+                            name=subname, designation_id=deg.id).first()
+
+                    area = db_areas_map.get(area_code)
+                    shift = db_shifts_map.get(shift_name)
+
                     emp = Employee(
                         attendance_code=acode,
-                        full_name=name,
+                        full_name=fname,
                         company_id=comp.id,
-                        business_area_id=random.choice(db_areas).id if db_areas else None,
-                        shift_id=random.choice(db_shifts).id if db_shifts else None,
-                        designation_id=deg.id,
-                        designation_subcategory_id=sub.id,
-                        salary_base=random.randint(3000, 8000) * 10,
-                        is_active=True
+                        business_area_id=area.id if area else None,
+                        shift_id=shift.id if shift else None,
+                        designation_id=deg.id if deg else None,
+                        designation_subcategory_id=sub.id if sub else None,
+                        salary_base=salary,
+                        is_active=active
                     )
                     session.add(emp)
-                    employees.append(emp)
-                else:
-                    employees.append(emp)
+                employees.append(emp)
             session.flush()
             
             # 5. Attendance History (Past 7 days)
