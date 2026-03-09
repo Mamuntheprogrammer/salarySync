@@ -1,4 +1,8 @@
 import sys
+import warnings
+
+# Suppress pkg_resources deprecation warning from face_recognition_models
+warnings.filterwarnings("ignore", category=UserWarning, message="pkg_resources is deprecated as an API")
 from PyQt6.QtWidgets import QApplication
 from ui.main_window import MainWindow
 from database import db

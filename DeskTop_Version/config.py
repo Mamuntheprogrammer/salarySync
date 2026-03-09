@@ -35,6 +35,9 @@ class Config:
         "remote_db": {
             "connection_string": "", # sqlalchemy URI
             "last_backup": None
+        },
+        "face_recognition": {
+            "auto_clock_delay_seconds": 3
         }
     }
     

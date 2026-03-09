@@ -2,27 +2,124 @@ from PyQt6.QtWidgets import (QComboBox, QDateEdit, QDialog, QFormLayout, QGridLa
                              QInputDialog, QLabel, QLineEdit, QMessageBox, QPushButton, QTabWidget, QTimeEdit, 
                              QVBoxLayout, QWidget, QFrame)
 from PyQt6.QtCore import Qt, QTimer, QTime, QDate
-from PyQt6.QtGui import QFont
+from PyQt6.QtGui import QFont, QImage, QPixmap
 from services.attendance_service import AttendanceService
 from services.leave_service import LeaveService
+from services.face_service import FaceService
 from models import Employee
 from database import get_db_session
 from config import Config
 from datetime import date
+import cv2
 
 class EmployeeTerminal(QWidget):
     def __init__(self):
         super().__init__()
+        
+        # Camera & Face state
+        self.camera = None
+        self.timer = QTimer()
+        self.timer.timeout.connect(self.update_frame)
+        self.known_encodings = []
+        self.known_emp_ids = []
+        self.frame_count = 0
+        self.last_recognized_name = ""
+        self.last_recognized_code = ""
+        
+        # Auto-action state
+        self.current_recognizing_id = None
+        self.recognition_start_time = None
+        self.last_seen_time = None
+        self.recent_actions = {} # emp_id -> QTime
+        
+        config = Config.load_config()
+        self.auto_clock_delay = config.get("face_recognition", {}).get("auto_clock_delay_seconds", 3)
+        
+        # Preload faces
+        try:
+            session = get_db_session()
+            self.known_encodings, self.known_emp_ids = FaceService.load_known_faces(session)
+            session.close()
+        except Exception as e:
+            print(f"Error loading faces on terminal boot: {e}")
+            
         self.init_ui()
         
     def init_ui(self):
-        layout = QVBoxLayout()
-        self.setLayout(layout)
+        main_layout = QHBoxLayout()
+        main_layout.setSpacing(20)
+        main_layout.setContentsMargins(20, 20, 20, 20)
+        self.setLayout(main_layout)
+        
+        # Left Side (Camera Container)
+        camera_container = QFrame()
+        camera_container.setStyleSheet("""
+            QFrame {
+                border: 1px solid #ddd;
+                border-radius: 8px;
+                background-color: #ffffff;
+            }
+        """)
+        camera_layout = QVBoxLayout(camera_container)
+        camera_layout.setContentsMargins(20, 20, 20, 20)
+        
+        cam_title = QLabel("Face Recognition Attendance")
+        cam_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        cam_title.setFont(QFont("Arial", 16, QFont.Weight.Bold))
+        cam_title.setStyleSheet("border: none; margin-bottom: 10px;")
+        camera_layout.addWidget(cam_title)
+        
+        self.video_label = QLabel("Camera Offline")
+        self.video_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.video_label.setMinimumSize(400, 300)
+        self.video_label.setStyleSheet("background-color: #111; color: #fff; font-size: 18px; border-radius: 8px;")
+        
+        video_wrap = QHBoxLayout()
+        video_wrap.addWidget(self.video_label)
+        camera_layout.addLayout(video_wrap)
+        
+        self.lbl_face_status = QLabel("Turn on camera for face detection.")
+        self.lbl_face_status.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.lbl_face_status.setStyleSheet("color: #666; font-size: 14px; font-weight: bold; border: none; margin-top: 10px;")
+        camera_layout.addWidget(self.lbl_face_status)
+        
+        # Camera Toggle Button
+        self.btn_toggle_cam = QPushButton("Turn On Camera")
+        self.btn_toggle_cam.setStyleSheet("""
+            QPushButton {
+                background-color: #2196F3; color: white; padding: 10px 20px; 
+                font-weight: bold; font-size: 14px; border-radius: 4px;
+            }
+            QPushButton:hover { background-color: #1976D2; }
+        """)
+        self.btn_toggle_cam.clicked.connect(self.toggle_camera)
+        
+        btn_wrap = QHBoxLayout()
+        btn_wrap.addStretch()
+        btn_wrap.addWidget(self.btn_toggle_cam)
+        btn_wrap.addStretch()
+        camera_layout.addLayout(btn_wrap)
+        
+        camera_layout.addStretch()
+        main_layout.addWidget(camera_container, stretch=1)
+        
+        # Right Side (Keypad Container)
+        keypad_container = QFrame()
+        keypad_container.setStyleSheet("""
+            QFrame {
+                border: 1px solid #ddd;
+                border-radius: 8px;
+                background-color: #ffffff;
+            }
+        """)
+        layout = QVBoxLayout(keypad_container)
+        layout.setContentsMargins(20, 20, 20, 20)
         
         # Title
-        title = QLabel("Employee Attendance Terminal")
+        title = QLabel("Terminal Login")
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        title.setFont(QFont("Arial", 18, QFont.Weight.Bold))
+        title.setFont(QFont("Arial", 16, QFont.Weight.Bold))
+        title.setStyleSheet("border: none; margin-bottom: 10px;")
         layout.addWidget(title)
         
         # Display
@@ -96,7 +193,12 @@ class EmployeeTerminal(QWidget):
         for text, row, col in buttons:
             btn = QPushButton(text)
             btn.setFont(QFont("Arial", 14))
-            btn.setFixedSize(80, 60)
+            btn.setFixedSize(70, 50)
+            btn.setStyleSheet("""
+                QPushButton { border: 1px solid #ddd; border-radius: 4px; background-color: #f9f9f9; }
+                QPushButton:hover { background-color: #eeeeee; }
+                QPushButton:pressed { background-color: #dddddd; }
+            """)
             btn.clicked.connect(lambda checked, t=text: self.on_keypad_click(t))
             grid_layout.addWidget(btn, row, col)
             
@@ -126,9 +228,164 @@ class EmployeeTerminal(QWidget):
         # Status Label
         self.status_label = QLabel("")
         self.status_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.status_label.setStyleSheet("color: blue; font-weight: bold;")
+        self.status_label.setStyleSheet("color: blue; font-weight: bold; border: none;")
         layout.addWidget(self.status_label)
+        layout.addStretch()
         
+        main_layout.addWidget(keypad_container, stretch=1)
+        
+        self.is_camera_running = False
+        
+    def toggle_camera(self):
+        if not self.is_camera_running:
+            self.start_camera()
+        else:
+            self.stop_camera()
+            
+    def stop_camera(self):
+        self.timer.stop()
+        if self.camera:
+            self.camera.release()
+            self.camera = None
+        self.is_camera_running = False
+        self.video_label.clear()
+        self.video_label.setText("Camera Offline")
+        self.btn_toggle_cam.setText("Turn On Camera")
+        self.btn_toggle_cam.setStyleSheet("""
+            QPushButton {
+                background-color: #2196F3; color: white; padding: 10px 20px; 
+                font-weight: bold; font-size: 14px; border-radius: 4px;
+            }
+            QPushButton:hover { background-color: #1976D2; }
+        """)
+        self.lbl_face_status.setText("Turn on camera for face detection.")
+        
+    def start_camera(self):
+        self.camera = cv2.VideoCapture(0)
+        if self.camera.isOpened():
+            self.is_camera_running = True
+            self.btn_toggle_cam.setText("Turn Off Camera")
+            self.btn_toggle_cam.setStyleSheet("""
+                QPushButton {
+                    background-color: #f44336; color: white; padding: 10px 20px; 
+                    font-weight: bold; font-size: 14px; border-radius: 4px;
+                }
+                QPushButton:hover { background-color: #d32f2f; }
+            """)
+            self.lbl_face_status.setText("Scanning for faces...")
+            self.timer.start(30)
+        else:
+            QMessageBox.warning(self, "Camera Error", "Could not access webcam.")
+            
+    def hideEvent(self, event):
+        # Stop camera if terminal goes invisible (e.g. login to admin)
+        self.stop_camera()
+        super().hideEvent(event)
+        
+    def showEvent(self, event):
+        # Only reload encodings, user must manually turn on camera
+        try:
+            session = get_db_session()
+            self.known_encodings, self.known_emp_ids = FaceService.load_known_faces(session)
+            session.close()
+        except:
+            pass
+        super().showEvent(event)
+
+    def update_frame(self):
+        if not self.camera:
+            return
+            
+        ret, frame = self.camera.read()
+        if not ret:
+            return
+            
+        rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        
+        # 16x speedup by scaling down for face detection
+        small_frame = cv2.resize(rgb_frame, (0, 0), fx=0.25, fy=0.25)
+        
+        # Face Recognition every 5 frames
+        self.frame_count += 1
+        if self.frame_count % 5 == 0:
+            detected_ids = FaceService.match_face(small_frame, self.known_encodings, self.known_emp_ids, tolerance=0.5)
+            
+            curr_time = QTime.currentTime()
+            
+            if detected_ids:
+                emp_id = detected_ids[0] # Just take first recognized
+                self.last_seen_time = curr_time
+                
+                # Check cooldown
+                if emp_id in self.recent_actions:
+                    if self.recent_actions[emp_id].secsTo(curr_time) < 60:
+                        self.lbl_face_status.setText("Action completed. Please step away.")
+                        self.lbl_face_status.setStyleSheet("color: #FF9800; font-size: 16px; font-weight: bold; margin-top: 10px;")
+                        self.draw_frame(rgb_frame)
+                        return
+                        
+                if self.current_recognizing_id != emp_id:
+                    self.current_recognizing_id = emp_id
+                    self.recognition_start_time = curr_time
+                    
+                    # Fetch name and code immediately upon spotting
+                    session = get_db_session()
+                    emp = session.query(Employee).get(emp_id)
+                    if emp:
+                        self.last_recognized_name = emp.full_name
+                        self.last_recognized_code = emp.attendance_code
+                        if self.code_display.text() != self.last_recognized_code:
+                            self.code_display.setText(self.last_recognized_code)
+                    session.close()
+                else:
+                    if self.recognition_start_time is not None:
+                        elapsed = self.recognition_start_time.secsTo(curr_time)
+                        if elapsed >= self.auto_clock_delay:
+                            # TRIGGER AUTO CLOCK!
+                            self.auto_clock_action(emp_id)
+                            self.current_recognizing_id = None
+                            self.recognition_start_time = None
+                        else:
+                            self.lbl_face_status.setText(f"Hold still... {self.auto_clock_delay - elapsed}s")
+                            self.lbl_face_status.setStyleSheet("color: #2196F3; font-size: 18px; font-weight: bold; margin-top: 10px;")
+            else:
+                # If lost for more than 1 second, reset
+                if self.last_seen_time is not None and self.last_seen_time.secsTo(curr_time) > 1:
+                    self.current_recognizing_id = None
+                    self.recognition_start_time = None
+                    self.last_recognized_name = ""
+                    self.lbl_face_status.setText("Scanning for faces...")
+                    self.lbl_face_status.setStyleSheet("color: #666; font-size: 14px; font-weight: bold; margin-top: 10px;")
+
+        self.draw_frame(rgb_frame)
+
+    def draw_frame(self, rgb_frame):
+        # Draw frame (no text overlays as requested)
+        h, w, ch = rgb_frame.shape
+        bytes_per_line = ch * w
+        qt_image = QImage(rgb_frame.data, w, h, bytes_per_line, QImage.Format.Format_RGB888)
+        pixmap = QPixmap.fromImage(qt_image)
+        self.video_label.setPixmap(pixmap.scaled(self.video_label.width(), self.video_label.height(), Qt.AspectRatioMode.KeepAspectRatio))
+
+    def auto_clock_action(self, emp_id):
+        session = get_db_session()
+        emp = session.query(Employee).get(emp_id)
+        if not emp: return
+        
+        code = emp.attendance_code
+        
+        # Try clock IN
+        result = AttendanceService.clock_in(session, code)
+        if not result['success'] and "Already Clocked In" in result['message']:
+            # They must be trying to clock out!
+            result = AttendanceService.clock_out(session, code)
+            
+        self.handle_result(result)
+        self.recent_actions[emp_id] = QTime.currentTime()
+        self.code_display.clear()
+        self.lbl_face_status.setText("Success! Stepping away...")
+        self.lbl_face_status.setStyleSheet("color: green; font-size: 18px; font-weight: bold;")
+
     def on_keypad_click(self, text):
         current = self.code_display.text()
         if text == 'Clear':
@@ -194,3 +451,4 @@ class EmployeeTerminal(QWidget):
         else:
             self.status_label.setText(result['message'])
             self.status_label.setStyleSheet("color: red; font-weight: bold; font-size: 14px;")
+            QTimer.singleShot(5000, lambda: self.status_label.setText(""))

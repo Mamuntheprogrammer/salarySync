@@ -69,6 +69,9 @@ class Employee(Base):
     joining_date = Column(Date, default=datetime.now)
     salary_base = Column(Float, default=0.0)
     
+    # Face Recognition
+    face_encoding_path = Column(String(500), nullable=True)
+    
     company_id = Column(Integer, ForeignKey('companies.id'), nullable=True)
     business_area_id = Column(Integer, ForeignKey('business_areas.id'), nullable=True)
     
@@ -83,6 +86,11 @@ class Employee(Base):
     custom_shift_start = Column(Time, nullable=True)
     custom_shift_end = Column(Time, nullable=True)
     
+    # Lifecycle Management
+    valid_to = Column(Date, nullable=True)
+    resign_status = Column(String(50), nullable=True) # Resigned, Terminated, etc.
+    resign_date = Column(Date, nullable=True)
+    
     # Relationships
     company = relationship("Company", back_populates="employees")
     business_area = relationship("BusinessArea", back_populates="employees")
@@ -91,6 +99,7 @@ class Employee(Base):
     shift = relationship("Shift", back_populates="employees")
     attendance_records = relationship("Attendance", back_populates="employee", cascade="all, delete-orphan")
     leaves = relationship("ShortLeave", back_populates="employee", cascade="all, delete-orphan")
+    bonuses = relationship("Bonus", back_populates="employee", cascade="all, delete-orphan")
 
 class Attendance(Base):
     __tablename__ = 'attendance'
@@ -222,4 +231,66 @@ class AdminUser(Base):
     role = Column(String(20), default="admin") # admin, user
     
     employee_id = Column(Integer, ForeignKey('employees.id'), nullable=True)
+    employee = relationship("Employee")
+
+class Bonus(Base):
+    __tablename__ = 'bonuses'
+    
+    id = Column(Integer, primary_key=True)
+    employee_id = Column(Integer, ForeignKey('employees.id'), nullable=False)
+    month = Column(Integer, nullable=False)
+    year = Column(Integer, nullable=False)
+    amount = Column(Float, nullable=False)
+    is_percentage = Column(Boolean, default=False, nullable=False)
+    description = Column(String(200), nullable=True)
+    
+    # Relationships
+    employee = relationship("Employee", back_populates="bonuses")
+
+class PayrollRecord(Base):
+    __tablename__ = 'payroll_records'
+    
+    id = Column(Integer, primary_key=True)
+    employee_id = Column(Integer, ForeignKey('employees.id'), nullable=False)
+    month = Column(Integer, nullable=False)
+    year = Column(Integer, nullable=False)
+    
+    # Snapshot data
+    base_salary = Column(Float, nullable=False, default=0.0)
+    total_present = Column(Float, nullable=False, default=0.0)
+    total_absent = Column(Float, nullable=False, default=0.0)
+    total_leave = Column(Float, nullable=False, default=0.0)
+    total_holidays = Column(Float, nullable=False, default=0.0)
+    
+    ot_hours = Column(Float, nullable=False, default=0.0)
+    ot_pay = Column(Float, nullable=False, default=0.0)
+    
+    late_deduction = Column(Float, nullable=False, default=0.0)
+    leave_deduction = Column(Float, nullable=False, default=0.0)
+    
+    net_salary = Column(Float, nullable=False, default=0.0)
+    
+    # Audit logic
+    generated_at = Column(DateTime, default=datetime.now)
+
+    employee = relationship("Employee")
+
+class BonusRecord(Base):
+    __tablename__ = 'bonus_records'
+    
+    id = Column(Integer, primary_key=True)
+    employee_id = Column(Integer, ForeignKey('employees.id'), nullable=False)
+    month = Column(Integer, nullable=False)
+    year = Column(Integer, nullable=False)
+    
+    # Snapshot data
+    base_salary = Column(Float, nullable=False, default=0.0)
+    bonus_rate_or_amount = Column(Float, nullable=False, default=0.0)
+    is_percentage = Column(Boolean, nullable=False, default=False)
+    
+    final_bonus_pay = Column(Float, nullable=False, default=0.0)
+    
+    # Audit logic
+    generated_at = Column(DateTime, default=datetime.now)
+
     employee = relationship("Employee")

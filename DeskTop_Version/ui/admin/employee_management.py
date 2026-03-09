@@ -29,10 +29,18 @@ class EmployeeManagement(QWidget):
         
         # Table
         self.table = QTableWidget()
-        self.table.setColumnCount(10)
-        self.table.setHorizontalHeaderLabels(["Attendance Code", "Emp ID", "Name", "Company", "Area", "Shift", "Designation", "Salary", "Status", "Actions"])
-        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
-        self.table.horizontalHeader().setSectionResizeMode(9, QHeaderView.ResizeMode.ResizeToContents) # Fix underflow
+        self.table.setColumnCount(12)
+        self.table.setHorizontalHeaderLabels(["Attendance Code", "Emp ID", "Name", "Company", "Area", "Shift", "Designation", "Salary", "Valid To", "Resign Status", "Status", "Actions"])
+        
+        # Make columns adjustable and add horizontal scrollbar
+        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
+        self.table.setHorizontalScrollMode(QTableWidget.ScrollMode.ScrollPerPixel)
+        self.table.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        self.table.setWordWrap(True)
+        
+        # Optional: Set a minimum width for columns to avoid them being too small initially
+        self.table.horizontalHeader().setMinimumSectionSize(80)
+
         layout.addWidget(self.table)
         
     def load_data(self):
@@ -59,6 +67,10 @@ class EmployeeManagement(QWidget):
             # Salary
             self.table.setItem(row, 7, QTableWidgetItem(str(emp.salary_base)))
             
+            # Lifecycle details
+            self.table.setItem(row, 8, QTableWidgetItem(emp.valid_to.strftime("%Y-%m-%d") if emp.valid_to else "-"))
+            self.table.setItem(row, 9, QTableWidgetItem(emp.resign_status if emp.resign_status else "-"))
+            
             # Status
             status_str = "Active" if emp.is_active else "Inactive"
             status_item = QTableWidgetItem(status_str)
@@ -66,7 +78,7 @@ class EmployeeManagement(QWidget):
                 status_item.setForeground(Qt.GlobalColor.green)
             else:
                  status_item.setForeground(Qt.GlobalColor.red)
-            self.table.setItem(row, 8, status_item)
+            self.table.setItem(row, 10, status_item)
             
             # Actions
             action_widget = QWidget()
@@ -88,7 +100,7 @@ class EmployeeManagement(QWidget):
             btn_toggle.clicked.connect(lambda ch, e=emp: self.toggle_status(e))
             action_layout.addWidget(btn_toggle)
             
-            self.table.setCellWidget(row, 9, action_widget)
+            self.table.setCellWidget(row, 11, action_widget)
 
     def toggle_status(self, emp):
         action = "deactivate" if emp.is_active else "activate"
@@ -218,6 +230,39 @@ class EmployeeManagement(QWidget):
         deg_combo.currentIndexChanged.connect(update_subs)
         update_subs()
         
+        # Lifecycle Fields
+        active_combo = QComboBox()
+        active_combo.setStyleSheet(combo_style)
+        active_combo.addItem("Active", True)
+        active_combo.addItem("Inactive", False)
+        active_combo.setCurrentIndex(0 if emp.is_active else 1)
+
+        from PyQt6.QtWidgets import QDateEdit
+        from PyQt6.QtCore import QDate
+        
+        valid_to_input = QDateEdit()
+        valid_to_input.setCalendarPopup(True)
+        if emp.valid_to:
+            valid_to_input.setDate(QDate(emp.valid_to.year, emp.valid_to.month, emp.valid_to.day))
+        else:
+            valid_to_input.setDate(QDate(2099, 12, 31))
+            
+        resign_status_combo = QComboBox()
+        resign_status_combo.setStyleSheet(combo_style)
+        resign_statuses = ["", "Resigned", "Terminated", "Suspended", "Retired"]
+        for rs in resign_statuses:
+            resign_status_combo.addItem(rs if rs else "None", rs if rs else None)
+        if emp.resign_status:
+             idx = resign_status_combo.findData(emp.resign_status)
+             if idx >= 0: resign_status_combo.setCurrentIndex(idx)
+             
+        resign_date_input = QDateEdit()
+        resign_date_input.setCalendarPopup(True)
+        if emp.resign_date:
+            resign_date_input.setDate(QDate(emp.resign_date.year, emp.resign_date.month, emp.resign_date.day))
+        else:
+            resign_date_input.setDate(QDate.currentDate())
+        
         form.addRow("Name:", name_input)
         form.addRow("Company:", company_combo)
         form.addRow("Business Area:", ba_combo)
@@ -229,6 +274,11 @@ class EmployeeManagement(QWidget):
         form.addRow("Designation:", deg_combo)
         form.addRow("Subcategory:", sub_combo)
         
+        form.addRow("Status:", active_combo)
+        form.addRow("Valid To:", valid_to_input)
+        form.addRow("Resign Status:", resign_status_combo)
+        form.addRow("Resign Date:", resign_date_input)
+        
         btn_save = QPushButton("Update")
         btn_save.clicked.connect(lambda: self.save_edit(dialog, emp.id, {
             "full_name": name_input.text(),
@@ -239,7 +289,11 @@ class EmployeeManagement(QWidget):
             "custom_shift_start": custom_start.time().toPyTime() if shift_combo.currentData() is None else None,
             "custom_shift_end": custom_end.time().toPyTime() if shift_combo.currentData() is None else None,
             "designation_id": deg_combo.currentData(),
-            "designation_subcategory_id": sub_combo.currentData()
+            "designation_subcategory_id": sub_combo.currentData(),
+            "is_active": active_combo.currentData(),
+            "valid_to": valid_to_input.date().toPyDate(),
+            "resign_status": resign_status_combo.currentData(),
+            "resign_date": resign_date_input.date().toPyDate() if resign_status_combo.currentData() else None
         }))
         form.addRow(btn_save)
         
@@ -357,6 +411,29 @@ class EmployeeManagement(QWidget):
         deg_combo.currentIndexChanged.connect(update_subs)
         update_subs()
             
+        # Lifecycle Fields
+        active_combo = QComboBox()
+        active_combo.setStyleSheet(combo_style)
+        active_combo.addItem("Active", True)
+        active_combo.addItem("Inactive", False)
+        
+        from PyQt6.QtWidgets import QDateEdit
+        from PyQt6.QtCore import QDate
+        
+        valid_to_input = QDateEdit()
+        valid_to_input.setCalendarPopup(True)
+        valid_to_input.setDate(QDate(2099, 12, 31))
+            
+        resign_status_combo = QComboBox()
+        resign_status_combo.setStyleSheet(combo_style)
+        resign_statuses = ["", "Resigned", "Terminated", "Suspended", "Retired"]
+        for rs in resign_statuses:
+            resign_status_combo.addItem(rs if rs else "None", rs if rs else None)
+             
+        resign_date_input = QDateEdit()
+        resign_date_input.setCalendarPopup(True)
+        resign_date_input.setDate(QDate.currentDate())
+        
         form.addRow("Full Name:", name_input)
         form.addRow("Company:", company_combo)
         form.addRow("Business Area:", ba_combo)
@@ -367,6 +444,11 @@ class EmployeeManagement(QWidget):
 
         form.addRow("Designation:", deg_combo)
         form.addRow("Subcategory:", sub_combo)
+
+        form.addRow("Status:", active_combo)
+        form.addRow("Valid To:", valid_to_input)
+        form.addRow("Resign Status:", resign_status_combo)
+        form.addRow("Resign Date:", resign_date_input)
         
         btn_save = QPushButton("Create Employee")
         btn_save.clicked.connect(lambda: self.save_employee(dialog, {
@@ -378,7 +460,11 @@ class EmployeeManagement(QWidget):
             "custom_shift_start": custom_start.time().toPyTime() if shift_combo.currentData() is None else None,
             "custom_shift_end": custom_end.time().toPyTime() if shift_combo.currentData() is None else None,
             "designation_id": deg_combo.currentData(),
-            "designation_subcategory_id": sub_combo.currentData()
+            "designation_subcategory_id": sub_combo.currentData(),
+            "is_active": active_combo.currentData(),
+            "valid_to": valid_to_input.date().toPyDate(),
+            "resign_status": resign_status_combo.currentData(),
+            "resign_date": resign_date_input.date().toPyDate() if resign_status_combo.currentData() else None
             # Simplified mock for business area checks
         }))
         form.addRow(btn_save)

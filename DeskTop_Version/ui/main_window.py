@@ -1,4 +1,4 @@
-from PyQt6.QtWidgets import QMainWindow, QWidget, QHBoxLayout, QFrame
+from PyQt6.QtWidgets import QMainWindow, QWidget, QHBoxLayout, QVBoxLayout, QFrame
 from .terminal.employee_terminal import EmployeeTerminal
 from .admin.login_dialog import AdminLoginWidget
 
@@ -115,46 +115,73 @@ class MainWindow(QMainWindow):
         self.central_widget = QWidget()
         self.setCentralWidget(self.central_widget)
         
-        self.layout = QHBoxLayout(self.central_widget)
+        self.main_layout = QVBoxLayout(self.central_widget)
+        self.main_layout.setContentsMargins(0, 0, 0, 0)
+        self.main_layout.setSpacing(0)
         
-        # Left Side: Employee Terminal
+        # Container for main content (Terminal or Admin)
+        self.content_container = QWidget()
+        self.content_layout = QHBoxLayout(self.content_container)
+        self.content_layout.setContentsMargins(0, 0, 0, 0)
+        
+        # Employee Terminal is the default view
         self.terminal_widget = EmployeeTerminal()
-        self.layout.addWidget(self.terminal_widget, stretch=1)
+        self.content_layout.addWidget(self.terminal_widget, stretch=1)
         
-        # Vertical Line
-        line = QFrame()
-        line.setFrameShape(QFrame.Shape.VLine)
-        line.setFrameShadow(QFrame.Shadow.Sunken)
-        self.layout.addWidget(line)
+        self.main_layout.addWidget(self.content_container, stretch=1)
         
-        # Right Side: Admin Login
+        # Bottom Bar for Admin Portal Button
+        self.bottom_bar = QWidget()
+        self.bottom_bar.setStyleSheet("background-color: #f0f0f0; border-top: 1px solid #ddd;")
+        bottom_layout = QHBoxLayout(self.bottom_bar)
+        bottom_layout.setContentsMargins(10, 5, 10, 5)
+        
+        from PyQt6.QtWidgets import QPushButton
+        from PyQt6.QtCore import Qt
+        from PyQt6.QtGui import QCursor
+        
+        self.btn_admin_portal = QPushButton("⚙️ Admin Portal")
+        self.btn_admin_portal.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.btn_admin_portal.setStyleSheet("""
+            QPushButton {
+                background-color: transparent; color: #555; font-weight: bold; border: none; padding: 5px 10px; font-size: 14px;
+            }
+            QPushButton:hover { color: #333; background-color: #e0e0e0; border-radius: 4px; }
+        """)
+        self.btn_admin_portal.clicked.connect(self.show_admin_login)
+        
+        bottom_layout.addStretch()
+        bottom_layout.addWidget(self.btn_admin_portal)
+        self.main_layout.addWidget(self.bottom_bar)
+        
+        self.admin_widget = None
+
+    def show_admin_login(self):
+        # Hide terminal, show admin login
+        self.terminal_widget.hide()
+        
+        from .admin.login_dialog import AdminLoginWidget
         self.admin_widget = AdminLoginWidget(self)
-        self.layout.addWidget(self.admin_widget, stretch=1)
+        self.content_layout.addWidget(self.admin_widget, stretch=1)
+        
+        # Hide the bottom bar since we are in admin flow
+        self.bottom_bar.hide()
         
     def switch_to_dashboard(self, dashboard_widget):
         # Remove admin login widget and replace with dashboard
-        self.layout.removeWidget(self.admin_widget)
+        self.content_layout.removeWidget(self.admin_widget)
         self.admin_widget.deleteLater()
         
         self.admin_widget = dashboard_widget
-        self.layout.addWidget(self.admin_widget, stretch=4) # Give more space to dashboard
-        
-        # Hide terminal if needed, or keep it on the side?
-        # User requirement says "Landing page" has split screen.
-        # Usually admin dashboard takes full screen.
-        # Let's hide the terminal and line when admin logs in to give full space.
-        self.terminal_widget.hide()
-        self.layout.itemAt(1).widget().hide() # Hide line
+        self.content_layout.addWidget(self.admin_widget, stretch=1)
 
     def logout(self):
-        # 1. Remove Dashboard
-        self.layout.removeWidget(self.admin_widget)
-        self.admin_widget.deleteLater()
+        # Remove Dashboard
+        if self.admin_widget:
+            self.content_layout.removeWidget(self.admin_widget)
+            self.admin_widget.deleteLater()
+            self.admin_widget = None
         
-        # 2. Restore Admin Login
-        self.admin_widget = AdminLoginWidget(self)
-        self.layout.addWidget(self.admin_widget, stretch=1)
-        
-        # 3. Show Terminal & Line
+        # Restore Terminal
         self.terminal_widget.show()
-        self.layout.itemAt(1).widget().show() # Show line
+        self.bottom_bar.show()

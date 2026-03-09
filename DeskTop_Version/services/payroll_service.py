@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import func
-from models import Employee, Attendance, PayrollConfig, ShortLeave, LeaveRequest
+from models import Employee, Attendance, PayrollConfig, ShortLeave, LeaveRequest, PayrollRecord, BonusRecord, Bonus
 from config import Config
 from datetime import datetime, date, timedelta
 import calendar
@@ -220,3 +220,87 @@ class PayrollService:
             "net_salary": round(net_salary, 2),
             "divisor_used": divisor
         }
+
+    @staticmethod
+    def save_payroll_run(session: Session, month: int, year: int, data_list: list) -> tuple:
+        """
+        Saves a payroll calculation snapshot to the database.
+        Returns (success_count, warning_message)
+        """
+        success_count = 0
+        overwritten_count = 0
+        
+        for item in data_list:
+            emp_id = item.get("employee_id")
+            if not emp_id:
+                continue
+                
+            # Check if record already exists, if so overwrite it
+            record = session.query(PayrollRecord).filter_by(employee_id=emp_id, month=month, year=year).first()
+            if not record:
+                record = PayrollRecord(employee_id=emp_id, month=month, year=year)
+                session.add(record)
+            else:
+                overwritten_count += 1
+                
+            record.base_salary = float(item.get("base_salary", 0.0))
+            record.total_present = float(item.get("present_days", 0.0))
+            record.total_absent = float(item.get("absent_days", 0.0))
+            record.total_leave = 0.0 # From dict if available
+            record.total_holidays = 0.0
+            
+            record.ot_hours = float(item.get("ot_hours", 0.0) + item.get("holiday_ot_hours", 0.0))
+            record.ot_pay = float(item.get("ot_pay", 0.0) + item.get("holiday_ot_pay", 0.0))
+            
+            record.late_deduction = float(item.get("late_deduction", 0.0))
+            record.leave_deduction = float(item.get("short_leave_deduction", 0.0))
+            
+            record.net_salary = float(item.get("net_salary", 0.0))
+            
+            success_count += 1
+            
+        session.commit()
+        
+        msg = ""
+        if overwritten_count > 0:
+            msg = f"Saved {success_count} records ({overwritten_count} existing records were overwritten)."
+        else:
+            msg = f"Saved {success_count} records successfully."
+            
+        return success_count, msg
+
+    @staticmethod
+    def save_bonus_run(session: Session, month: int, year: int, data_list: list) -> tuple:
+        """
+        Saves a bonus calculation snapshot. 
+        """
+        success_count = 0
+        overwritten_count = 0
+        
+        for item in data_list:
+            emp_id = item.get("employee_id")
+            if not emp_id:
+                continue
+                
+            record = session.query(BonusRecord).filter_by(employee_id=emp_id, month=month, year=year).first()
+            if not record:
+                record = BonusRecord(employee_id=emp_id, month=month, year=year)
+                session.add(record)
+            else:
+                overwritten_count += 1
+                
+            record.base_salary = float(item.get("base_salary", 0.0))
+            record.bonus_rate_or_amount = float(item.get("bonus_provided", 0.0))
+            record.is_percentage = bool(item.get("is_percentage", False))
+            record.final_bonus_pay = float(item.get("final_bonus_pay", 0.0))
+            
+            success_count += 1
+            
+        session.commit()
+        
+        msg = f"Saved {success_count} record(s)."
+        if overwritten_count > 0:
+            msg += f" (Overwrote {overwritten_count})"
+            
+        return success_count, msg
+

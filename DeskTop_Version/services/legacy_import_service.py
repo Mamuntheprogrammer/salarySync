@@ -5,7 +5,7 @@ from database import get_db_session
 from models import (
     Employee, Shift, Attendance, Company, BusinessArea, 
     Designation, DesignationSubcategory, WeeklyHoliday, 
-    LeaveQuota, HolidayCalendar, ShortLeave, Base
+    LeaveQuota, HolidayCalendar, ShortLeave, Base, Bonus
 )
 import os
 
@@ -55,6 +55,10 @@ class LegacyImportService:
         "short_leaves": {
             "headers": ['attendance_code', 'employee_id', 'date', 'start_time', 'end_time', 'reason', 'status'],
             "dummy": [500001, 1, '2026-01-03', '10:00 AM', '12:00 PM', 'Personal', 'Approved']
+        },
+        "bonuses": {
+            "headers": ['attendance_code', 'employee_id', 'month', 'year', 'amount', 'is_percentage', 'description'],
+            "dummy": [500001, 1, 3, 2026, 5000, False, 'Performance Bonus']
         },
     }
 
@@ -554,3 +558,57 @@ class LegacyImportService:
             sl.status = status
             
         return True
+
+    @staticmethod
+    def _import_bonuses(session, data):
+        code_raw = data.get('attendance_code')
+        emp_id_raw = data.get('employee_id')
+        
+        if (not code_raw or str(code_raw).lower() == 'none') and (not emp_id_raw or str(emp_id_raw).lower() == 'none'):
+            return False
+
+        emp = None
+        if code_raw and str(code_raw).lower() != 'none':
+            code = str(code_raw).strip()
+            emp = session.query(Employee).filter_by(attendance_code=code).first()
+            
+        if not emp and emp_id_raw and str(emp_id_raw).lower() != 'none':
+            try:
+                emp = session.query(Employee).filter_by(id=int(emp_id_raw)).first()
+            except ValueError:
+                pass
+                
+        if not emp: 
+            raise ValueError("Employee not found using provided attendance_code or employee_id")
+
+        try:
+            month = int(data.get('month') or 0)
+            year = int(data.get('year') or 0)
+            amount = float(data.get('amount') or 0.0)
+        except ValueError:
+             raise ValueError("Month, Year, and Amount must be numeric")
+             
+        is_percentage = LegacyImportService._get_bool(data.get('is_percentage'))
+        desc = data.get('description', '')
+        
+        if not month or not year:
+            raise ValueError("Missing month or year")
+
+        bonus = session.query(Bonus).filter_by(employee_id=emp.id, month=month, year=year).first()
+        if not bonus:
+            bonus = Bonus(
+                employee_id=emp.id,
+                month=month,
+                year=year,
+                amount=amount,
+                is_percentage=is_percentage,
+                description=desc
+            )
+            session.add(bonus)
+        else:
+            bonus.amount = amount
+            bonus.is_percentage = is_percentage
+            bonus.description = desc
+            
+        return True
+

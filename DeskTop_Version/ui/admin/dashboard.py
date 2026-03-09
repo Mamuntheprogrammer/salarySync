@@ -115,29 +115,35 @@ class AdminDashboard(QWidget):
         groups = {
             "Main": [
                 {"label": "Dashboard", "key": "dashboard"},
-                {"label": "Attendance Terminal", "key": "terminal"},
-                {"label": "Attendance Manager", "key": "attendance"},
+                {"label": "Attendance Terminal", "key": "terminal"}
+            ],
+            "Workforce Management": [
                 {"label": "Employee Manager", "key": "employees"},
+                {"label": "Attendance Manager", "key": "attendance"},
                 {"label": "Leave Approval", "key": "leave_approval"},
+                {"label": "Short Leave Manager", "key": "short_leaves"},
             ],
-            "Reports": [
-                {"label": "Summary Report", "key": "reports"},
-                # Note: "Month Wise" is a tab inside Reports module, not a separate page key here.
+            "Payroll & Bonus": [
+                {"label": "Payroll Settings", "key": "payroll_config"},
+                {"label": "Bonus Manager", "key": "bonuses"},
+                {"label": "Run Payroll", "key": "payroll"},
+                {"label": "Run Bonus", "key": "bonus_run"},
             ],
-            "Master Data": [
-                {"label": "Import Data", "key": "legacy_import"},
+            "Organization Setup": [
                 {"label": "Company Manager", "key": "companies"},
                 {"label": "Designation Manager", "key": "designations"},
                 {"label": "Shift Manager", "key": "shifts"},
-                {"label": "Holiday & Weekly Manager", "key": "calendars"},
-                {"label": "Leave Manager", "key": "leave_quotas"},
-                {"label": "Short Leave Manager", "key": "short_leaves"},
+                {"label": "Holiday & Weekly", "key": "calendars"},
+                {"label": "Face Manager", "key": "face_manager"},
+                {"label": "Leave Quotas", "key": "leave_quotas"},
             ],
-            "System": [
+            "Reports": [
+                {"label": "System Reports", "key": "reports"},
+            ],
+            "System & Admin": [
                 {"label": "User Manager", "key": "users"},
-                {"label": "Payroll Config Manager", "key": "payroll_config"},
+                {"label": "Import Data", "key": "legacy_import"},
                 {"label": "Backup & Restore", "key": "backup"},
-                {"label": "Run Payroll", "key": "payroll"},
                 {"label": "Cloud Sync", "key": "cloud"},
             ]
         }
@@ -148,7 +154,7 @@ class AdminDashboard(QWidget):
                 self.add_menu_btn(sidebar_layout, item["label"], item["key"])
         
         # Add Collapsible Sections
-        for section in ["Reports", "Master Data", "System"]:
+        for section in ["Workforce Management", "Payroll & Bonus", "Organization Setup", "Reports", "System & Admin"]:
             box_items = [i for i in groups[section] if is_allowed(i["key"])]
             
             if box_items:
@@ -247,6 +253,10 @@ class AdminDashboard(QWidget):
         # Payroll
         from .payroll_module import PayrollModule
         self.pages["payroll"] = PayrollModule()
+        
+        # Bonus Run
+        from .bonus_run_module import BonusRunModule
+        self.pages["bonus_run"] = BonusRunModule()
 
         # Leave Approval
         from .leave_approval import LeaveApproval
@@ -264,6 +274,10 @@ class AdminDashboard(QWidget):
         from .calendar_management import CalendarManagement
         self.pages["calendars"] = CalendarManagement()
         
+        # Face Manager
+        from .face_manager import FaceManager
+        self.pages["face_manager"] = FaceManager()
+        
         # Leave Quotas
         from .leave_quota_management import LeaveQuotaManagement
         self.pages["leave_quotas"] = LeaveQuotaManagement()
@@ -271,6 +285,10 @@ class AdminDashboard(QWidget):
         # Short Leaves
         from .short_leave_management import ShortLeaveManagement
         self.pages["short_leaves"] = ShortLeaveManagement()
+        
+        # Bonuses
+        from .bonus_management import BonusManagement
+        self.pages["bonuses"] = BonusManagement()
         
         # Backup
         from .backup_settings import BackupSettings

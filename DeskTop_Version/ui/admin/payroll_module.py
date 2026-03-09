@@ -54,6 +54,11 @@ class PayrollModule(QWidget):
         btn_calc.clicked.connect(self.calculate_payroll)
         header.addWidget(btn_calc)
         
+        btn_save = QPushButton("Save to Database")
+        btn_save.setStyleSheet("background-color: #2e7d32; color: white;")
+        btn_save.clicked.connect(self.save_to_database)
+        header.addWidget(btn_save)
+        
         header.addStretch()
         layout.addLayout(header)
         
@@ -83,13 +88,13 @@ class PayrollModule(QWidget):
         
         self.table.setRowCount(0)
         
-        # Prepare data for export
-        export_data = []
+        self.export_data = []
         
         for row, emp in enumerate(employees):
             payroll = PayrollService.calculate_salary(session, emp.id, month, year)
             
             if payroll:
+                payroll["employee_id"] = emp.id # Keep ID for saving
                 self.table.insertRow(row)
                 
                 # Helper to add editable item
@@ -119,16 +124,55 @@ class PayrollModule(QWidget):
                 add_item(10, payroll.get("divisor_used", 30), False)
                 add_item(11, "Draft", False)
                 
-                export_data.append(payroll)
+                self.export_data.append(payroll)
         
         self.table.itemChanged.connect(self.on_item_changed)
 
-        if export_data:
-            reply = QMessageBox.question(self, "Export", "Payroll Calculated. Do you want to save the output to Excel (CSV)?", QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+        if self.export_data:
+            reply = QMessageBox.question(self, "Export", "Payroll Calculated. Do you want to save the output to CSV?", QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
             if reply == QMessageBox.StandardButton.Yes:
-                self.export_to_csv(export_data, month, year)
+                self.export_to_csv(self.export_data, month, year)
         else:
-             QMessageBox.information(self, "Info", "No data to export.")
+             QMessageBox.information(self, "Info", "No data calculated for the selected filters.")
+
+    def save_to_database(self):
+        if not hasattr(self, 'export_data') or not self.export_data:
+            QMessageBox.warning(self, "Warning", "Please calculate payroll first.")
+            return
+
+        month = self.month_sel.currentIndex() + 1
+        year = self.year_sel.value()
+        
+        reply = QMessageBox.question(self, "Confirm Save", f"Save snapshot for {self.month_sel.currentText()} {year}? This preserves the historical values.", QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+        
+        if reply == QMessageBox.StandardButton.Yes:
+            # We must pull values straight from the visual table, in case the user edited them!
+            updated_data = []
+            for r, orig_dict in enumerate(self.export_data):
+                data_copy = dict(orig_dict)
+                try:
+                    # Column 1 = Base, Column 9 = Net Salary
+                    data_copy["base_salary"] = float(self.table.item(r, 1).text())
+                    data_copy["late_deduction"] = float(self.table.item(r, 4).text())
+                    data_copy["ot_pay"] = float(self.table.item(r, 7).text())
+                    data_copy["holiday_ot_pay"] = float(self.table.item(r, 8).text())
+                    data_copy["net_salary"] = float(self.table.item(r, 9).text())
+                except:
+                    pass
+                updated_data.append(data_copy)
+
+            session = get_db_session()
+            count, msg = PayrollService.save_payroll_run(session, month, year, updated_data)
+            
+            QMessageBox.information(self, "Database Saving", msg)
+            
+            # Change status string to "Saved"
+            self.table.blockSignals(True)
+            for r in range(self.table.rowCount()):
+                 item = QTableWidgetItem("Saved")
+                 item.setFlags(item.flags() ^ Qt.ItemFlag.ItemIsEditable)
+                 self.table.setItem(r, 11, item)
+            self.table.blockSignals(False)
     
     def on_item_changed(self, item):
         # Simple logic: If any deduction/addition changes, update Net Salary?

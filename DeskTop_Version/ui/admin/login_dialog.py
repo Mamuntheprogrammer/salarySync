@@ -157,6 +157,28 @@ class AdminLoginWidget(QWidget):
         
         container_layout.addLayout(form_layout)
         
+        # Button Layout
+        btn_layout = QHBoxLayout()
+        btn_layout.setSpacing(10)
+        
+        # Back Button
+        self.back_btn = QPushButton("🡄 Back")
+        self.back_btn.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.back_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #f0f0f0; 
+                color: #555; 
+                border-radius: 8px; 
+                padding: 12px;
+                font-size: 16px;
+                font-weight: bold;
+                border: 1px solid #ccc;
+            }
+            QPushButton:hover { background-color: #e0e0e0; color: #333; }
+        """)
+        self.back_btn.clicked.connect(self.go_back)
+        btn_layout.addWidget(self.back_btn, stretch=1)
+        
         # Login Button
         self.login_btn = QPushButton("Login")
         self.login_btn.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
@@ -183,7 +205,9 @@ class AdminLoginWidget(QWidget):
             }
         """)
         self.login_btn.clicked.connect(self.handle_login)
-        container_layout.addWidget(self.login_btn)
+        btn_layout.addWidget(self.login_btn, stretch=2)
+        
+        container_layout.addLayout(btn_layout)
         
         layout.addWidget(container)
         
@@ -192,6 +216,11 @@ class AdminLoginWidget(QWidget):
         
         # Remote DB Status
         self.check_remote_status(layout)
+
+    def go_back(self):
+        # Return to terminal
+        if hasattr(self.main_window, 'logout'):
+            self.main_window.logout()
 
     def check_remote_status(self, layout):
         config = Config.load_config()

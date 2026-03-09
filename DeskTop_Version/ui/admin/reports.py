@@ -3,7 +3,7 @@ from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
                              QHeaderView, QComboBox, QMessageBox, QFileDialog, QTabWidget)
 from PyQt6.QtCore import QDate, Qt
 from database import get_db_session
-from models import Attendance, Shift, Employee, ShortLeave, LeaveRequest, Company, BusinessArea, LeaveQuota
+from models import Attendance, Shift, Employee, ShortLeave, LeaveRequest, Company, BusinessArea, LeaveQuota, Bonus, PayrollRecord, BonusRecord
 from services.shift_service import ShiftService
 from services.calendar_service import CalendarService
 from config import Config
@@ -29,6 +29,14 @@ class ReportsModule(QWidget):
         # Tab 2: Month Wise Attendance
         self.month_wise_tab = InternalReportWidget(default_mode="report_month_wise_attendance")
         self.tabs.addTab(self.month_wise_tab, "Month Wise Attendance")
+        
+        # Tab 3: Employee Info Report
+        self.employee_tab = InternalReportWidget(default_mode="report_employee_info")
+        self.tabs.addTab(self.employee_tab, "Employee Report")
+        
+        # Tab 4: Bonus Report
+        self.bonus_tab = InternalReportWidget(default_mode="report_bonus")
+        self.tabs.addTab(self.bonus_tab, "Bonus Report")
         
         layout.addWidget(self.tabs)
 
@@ -196,6 +204,12 @@ class InternalReportWidget(QWidget):
             ]
         elif self.mode == "report_month_wise_attendance":
             cols = ["Date", "Attendance Code", "Emp ID", "Name", "Company", "Business Area", "Shift", "In", "Out", "Status"]
+        elif self.mode == "report_employee_info":
+            cols = ["Employee ID", "Code", "Name", "Company", "Business Area", "Joining Date", "Base Salary", "Valid To", "Resign Status", "Resign Date", "Face Registered?"]
+        elif self.mode == "report_bonus":
+            cols = ["Period (YY-MM)", "Attendance Code", "Name", "Company", "Business Area", "Base Salary", "Bonus Rate/Amt", "Percentage?", "Bonus Payout"]
+        elif self.mode == "report_payroll":
+            cols = ["Period (YY-MM)", "Attendance Code", "Name", "Total Present", "Total Absent", "OT Hrs", "OT Pay", "Late Ded.", "Leave Ded.", "Net Salary"]
         else:
             cols = []
             
@@ -225,6 +239,12 @@ class InternalReportWidget(QWidget):
                 self.generate_master_summary(session, start, end)
             elif self.mode == "report_month_wise_attendance":
                 self.generate_month_wise_attendance(session, start, end)
+            elif self.mode == "report_bonus":
+                self.generate_bonus_report(session, start, end)
+            elif self.mode == "report_employee_info":
+                self.generate_employee_info_report(session)
+            elif self.mode == "report_payroll":
+                self.generate_payroll_report(session, start, end)
                 
             if self.table.rowCount() == 0:
                 QMessageBox.information(self, "No Data", "No data available for the selected range and filters.")
@@ -589,3 +609,118 @@ class InternalReportWidget(QWidget):
                 self.add_row(row_idx, data)
                 row_idx += 1
                 curr += timedelta(days=1)
+
+        self.add_row(row_idx, data)
+
+    def generate_bonus_report(self, session, start, end):
+        # Fetch from BonusRecord snapshot
+        start_year, start_month = start.year, start.month
+        end_year, end_month = end.year, end.month
+        
+        all_records = session.query(BonusRecord).order_by(BonusRecord.year.desc(), BonusRecord.month.desc()).all()
+        
+        row_idx = 0
+        for b in all_records:
+            b_date = QDate(b.year, b.month, 1).toPyDate()
+            
+            if start <= b_date <= end:
+                emp = b.employee
+                
+                # Apply filters
+                comp_id = self.comp_filter.currentData()
+                if comp_id and emp.company_id != comp_id: continue
+                ba_id = self.ba_filter.currentData()
+                if ba_id and emp.business_area_id != ba_id: continue
+                emp_id = self.emp_filter.currentData()
+                if emp_id and emp.id != emp_id: continue
+                
+                self.table.insertRow(row_idx)
+                
+                period_str = f"{b.year}-{b.month:02d}"
+                is_perc = "Yes" if b.is_percentage else "No"
+                
+                data = [
+                    period_str,
+                    emp.attendance_code,
+                    emp.full_name,
+                    emp.company.name if emp.company else "-",
+                    emp.business_area.name if emp.business_area else "-",
+                    f"{b.base_salary:.2f}",
+                    f"{b.bonus_rate_or_amount:.2f}",
+                    is_perc,
+                    f"{b.final_bonus_pay:.2f}"
+                ]
+                self.add_row(row_idx, data)
+                row_idx += 1
+
+    def generate_payroll_report(self, session, start, end):
+        # Fetch from PayrollRecord snapshot
+        all_records = session.query(PayrollRecord).order_by(PayrollRecord.year.desc(), PayrollRecord.month.desc()).all()
+        
+        row_idx = 0
+        for p in all_records:
+            p_date = QDate(p.year, p.month, 1).toPyDate()
+            if start <= p_date <= end:
+                emp = p.employee
+                
+                # Apply filters
+                comp_id = self.comp_filter.currentData()
+                if comp_id and emp.company_id != comp_id: continue
+                ba_id = self.ba_filter.currentData()
+                if ba_id and emp.business_area_id != ba_id: continue
+                emp_id = self.emp_filter.currentData()
+                if emp_id and emp.id != emp_id: continue
+                
+                self.table.insertRow(row_idx)
+                
+                period_str = f"{p.year}-{p.month:02d}"
+                
+                data = [
+                    period_str,
+                    emp.attendance_code,
+                    emp.full_name,
+                    f"{p.total_present:.1f}",
+                    f"{p.total_absent:.1f}",
+                    f"{p.ot_hours:.2f}",
+                    f"{p.ot_pay:.2f}",
+                    f"{p.late_deduction:.2f}",
+                    f"{p.leave_deduction:.2f}",
+                    f"{p.net_salary:.2f}"
+                ]
+                self.add_row(row_idx, data)
+                row_idx += 1
+
+    def generate_employee_info_report(self, session):
+        # 1. Identify Employees based on filters
+        query = session.query(Employee).filter_by(is_active=True)
+        
+        comp_id = self.comp_filter.currentData()
+        if comp_id: query = query.filter_by(company_id=comp_id)
+        
+        ba_id = self.ba_filter.currentData()
+        if ba_id: query = query.filter_by(business_area_id=ba_id)
+        
+        emp_id = self.emp_filter.currentData()
+        if emp_id: query = query.filter_by(id=emp_id)
+        
+        employees = query.all()
+        
+        for row, emp in enumerate(employees):
+            self.table.insertRow(row)
+            
+            status = "Yes" if emp.face_encoding_path else "No"
+            
+            data = [
+                str(emp.id),
+                emp.attendance_code,
+                emp.full_name,
+                emp.company.name if emp.company else "-",
+                emp.business_area.name if emp.business_area else "-",
+                emp.joining_date.strftime("%Y-%m-%d") if emp.joining_date else "-",
+                f"{emp.salary_base:.2f}",
+                emp.valid_to.strftime("%Y-%m-%d") if emp.valid_to else "-",
+                emp.resign_status if emp.resign_status else "-",
+                emp.resign_date.strftime("%Y-%m-%d") if emp.resign_date else "-",
+                status
+            ]
+            self.add_row(row, data)
