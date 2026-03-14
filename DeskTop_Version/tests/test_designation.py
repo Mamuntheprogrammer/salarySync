@@ -62,7 +62,7 @@ def run_test():
     }
     
     emp = EmployeeService.create_employee(session, data)
-    print(f"[OK] Created Employee: {emp.full_name} (Code: {emp.attendance_code})")
+    print(f"[OK] Created Employee: {emp.full_name} (Code: {emp.emp_code})")
     
     # 4. Verify Relationship
     e = session.query(Employee).filter_by(id=emp.id).first()

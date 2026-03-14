@@ -62,7 +62,7 @@ class BonusRunModule(QWidget):
         self.table = QTableWidget()
         self.table.setColumnCount(9)
         self.table.setHorizontalHeaderLabels([
-            "Employee Code", "Employee Name", "Company", "Business Area", 
+            "Emp ID", "Employee Name", "Company", "Business Area", 
             "Base Salary", "Bonus Type", "Bonus Rate/Amount", "Calculated Bonus Pay", "Status"
         ])
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
@@ -140,7 +140,7 @@ class BonusRunModule(QWidget):
                 ba_name = emp.business_area.name if emp.business_area else "-"
                 
                 row_data_visual = [
-                    emp.attendance_code,
+                    str(emp.id),
                     emp.full_name,
                     comp_name,
                     ba_name,
@@ -159,7 +159,7 @@ class BonusRunModule(QWidget):
                 # Back-end dict for saving
                 export_dict = {
                     "employee_id": emp.id,
-                    "attendance_code": emp.attendance_code,
+                    "emp_id": emp.id,
                     "full_name": emp.full_name,
                     "base_salary": base_salary,
                     "is_percentage": b.is_percentage,
@@ -222,7 +222,7 @@ class BonusRunModule(QWidget):
                     # Write Data
                     for r_dict in self.export_data:
                         # Extract visual order from dict
-                        # Format ['attendance_code', 'full_name', company?, ba?, base, type, rate, calc]
+                        # Format ['emp_code', 'full_name', company?, ba?, base, type, rate, calc]
                         # Actually we can just pull from table visually instead of reconstructing from dict
                         pass
                         

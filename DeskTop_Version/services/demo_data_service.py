@@ -77,24 +77,24 @@ class DemoDataService:
             session.flush()
             
             # 4. Employees – mirroring the import template's sample rows exactly
-            # (attendance codes 1001-1010, same company/area/shift references)
+            # (employee codes 1001-1010, same company/area/shift references)
             emp_defs = [
-                # (acode,  full_name,         area_code, shift_name, desig_name,  sub_name,    salary, active)
-                ("1001", "John Doe",         "HR",  "General", "Manager",    "Senior",   50000, True),
-                ("1002", "Jane Smith",        "IT",  "Morning", "Developer",  "Backend",  45000, True),
-                ("1003", "Alice Johnson",     "IT",  "Morning", "Developer",  "Frontend", 42000, True),
-                ("1004", "Bob Brown",         "MKT", "Evening", "Manager",    "Junior",   35000, True),
-                ("1005", "Charlie Davis",     "SAL", "Evening", "Sales Exec", "Field",    30000, True),
-                ("1006", "Eva Wilson",        "SUP", "Night",   "Manager",    "Senior",   40000, True),
-                ("1007", "Frank Miller",      "HR",  "General", "Developer",  "Fullstack",15000, True),
-                ("1008", "Grace Lee",         "HR",  "Night",   "Manager",    "Senior",   90000, True),
-                ("1009", "Henry Taylor",      "FIN", "General", "Developer",  "Backend",  38000, False),
-                ("1010", "Ivy Clark",         "IT",  "Split 1", "Developer",  "Frontend", 41000, True),
+                # (full_name,         area_code, shift_name, desig_name,  sub_name,    salary, active)
+                ("John Doe",         "HR",  "General", "Manager",    "Senior",   50000, True),
+                ("Jane Smith",        "IT",  "Morning", "Developer",  "Backend",  45000, True),
+                ("Alice Johnson",     "IT",  "Morning", "Developer",  "Frontend", 42000, True),
+                ("Bob Brown",         "MKT", "Evening", "Manager",    "Junior",   35000, True),
+                ("Charlie Davis",     "SAL", "Evening", "Sales Exec", "Field",    30000, True),
+                ("Eva Wilson",        "SUP", "Night",   "Manager",    "Senior",   40000, True),
+                ("Frank Miller",      "HR",  "General", "Developer",  "Fullstack",15000, True),
+                ("Grace Lee",         "HR",  "Night",   "Manager",    "Senior",   90000, True),
+                ("Henry Taylor",      "FIN", "General", "Developer",  "Backend",  38000, False),
+                ("Ivy Clark",         "IT",  "Split 1", "Developer",  "Frontend", 41000, True),
             ]
 
             employees = []
-            for acode, fname, area_code, shift_name, dname, subname, salary, active in emp_defs:
-                emp = session.query(Employee).filter_by(attendance_code=acode).first()
+            for fname, area_code, shift_name, dname, subname, salary, active in emp_defs:
+                emp = session.query(Employee).filter_by(full_name=fname).first()
                 if not emp:
                     # Resolve designation and subcategory
                     deg = session.query(Designation).filter_by(name=dname).first()
@@ -107,7 +107,6 @@ class DemoDataService:
                     shift = db_shifts_map.get(shift_name)
 
                     emp = Employee(
-                        attendance_code=acode,
                         full_name=fname,
                         company_id=comp.id,
                         business_area_id=area.id if area else None,

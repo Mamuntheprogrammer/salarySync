@@ -13,7 +13,7 @@ def verify_emp_create():
     
     # 1. Ensure test employee does NOT exist
     test_code = "999999"
-    emp = session.query(Employee).filter_by(attendance_code=test_code).first()
+    emp = session.query(Employee).filter_by(emp_code=test_code).first()
     if emp:
         session.delete(emp)
         session.commit()
@@ -24,7 +24,7 @@ def verify_emp_create():
     ws = wb.active
     ws.title = "employees"
     # Headers from schema
-    ws.append(['attendance_code', 'full_name'])
+    ws.append(['emp_code', 'full_name'])
     ws.append([test_code, "New Auto Created Employee"])
     
     test_file = "test_emp_create.xlsx"
@@ -40,7 +40,7 @@ def verify_emp_create():
         return
 
     # 4. Verify DB
-    emp = session.query(Employee).filter_by(attendance_code=test_code).first()
+    emp = session.query(Employee).filter_by(emp_code=test_code).first()
     if emp:
         print(f"SUCCESS: Employee {test_code} created. Name: {emp.full_name}")
         # Clean up

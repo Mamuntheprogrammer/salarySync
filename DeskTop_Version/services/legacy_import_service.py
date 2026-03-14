@@ -5,7 +5,8 @@ from database import get_db_session
 from models import (
     Employee, Shift, Attendance, Company, BusinessArea, 
     Designation, DesignationSubcategory, WeeklyHoliday, 
-    LeaveQuota, HolidayCalendar, ShortLeave, Base, Bonus
+    LeaveQuota, HolidayCalendar, ShortLeave, Base, Bonus,
+    SalaryBreakdown
 )
 import os
 
@@ -33,12 +34,12 @@ class LegacyImportService:
             "dummy": ['Morning-1', '08:00 AM', '05:00 PM', 10]
         },
         "employees": {
-            "headers": ['attendance_code', 'full_name', 'joining_date', 'salary_base', 'company_code', 'business_area_code', 'designation_name', 'subcategory_name', 'shift_name', 'custom_shift_start', 'custom_shift_end', 'is_active'],
-            "dummy": [500001, 'Mehedi', '2022-05-12', 10000, 1000, 10, 'Manager', 'Level-1', 'Morning-1', None, None, True]
+            "headers": ['emp_id', 'full_name', 'joining_date', 'salary_base', 'company_code', 'business_area_code', 'designation_name', 'subcategory_name', 'shift_name', 'custom_shift_start', 'custom_shift_end', 'is_active'],
+            "dummy": [1, 'Mehedi', '2022-05-12', 50000, 1000, 10, 'Manager', 'Level-1', 'Morning-1', None, None, True]
         },
         "attendance": {
-            "headers": ['attendance_code', 'employee_id', 'date', 'clock_in', 'clock_out'],
-            "dummy": [500001, 1, '2026-01-01', '10:21 AM', '08:45 PM']
+            "headers": ['employee_id', 'date', 'clock_in', 'clock_out'],
+            "dummy": [1, '2026-01-01', '10:21 AM', '08:45 PM']
         },
         "weekly_holidays": {
             "headers": ['day_of_week', 'company_code', 'business_area_code', 'shift_name'],
@@ -53,12 +54,16 @@ class LegacyImportService:
             "dummy": ['2026-01-15', 'Election ', False, 2026, 'Govment', 1000, 10]
         },
         "short_leaves": {
-            "headers": ['attendance_code', 'employee_id', 'date', 'start_time', 'end_time', 'reason', 'status'],
-            "dummy": [500001, 1, '2026-01-03', '10:00 AM', '12:00 PM', 'Personal', 'Approved']
+            "headers": ['employee_id', 'date', 'start_time', 'end_time', 'reason', 'status'],
+            "dummy": [1, '2026-01-03', '10:00 AM', '12:00 PM', 'Personal', 'Approved']
         },
         "bonuses": {
-            "headers": ['attendance_code', 'employee_id', 'month', 'year', 'amount', 'is_percentage', 'description'],
-            "dummy": [500001, 1, 3, 2026, 5000, False, 'Performance Bonus']
+            "headers": ['employee_id', 'month', 'year', 'amount', 'is_percentage', 'description'],
+            "dummy": [1, 3, 2026, 5000, False, 'Performance Bonus']
+        },
+        "salary_breakdowns": {
+            "headers": ['employee_id', 'year', 'valid_to', 'basic', 'house_rent_allowance', 'conveyance', 'medical', 'mobile_bill', 'transportation_allowance', 'other_allowance'],
+            "dummy": [1, 2026, '2026-12-31', 20000, 10000, 5000, 3000, 1000, 2000, 9000]
         },
     }
 
@@ -253,21 +258,20 @@ class LegacyImportService:
 
     @staticmethod
     def _import_employees(session, data):
-        code_raw = data.get('attendance_code')
-        if code_raw is None: 
+        emp_id_raw = data.get('emp_id')
+        if emp_id_raw is None: 
             return False # Skip empty rows
             
-        code = str(code_raw).strip()
-        if not code or code.lower() == 'none': 
-            raise ValueError("Invalid attendance code")
-
         full_name = data.get('full_name')
-        
-        emp = session.query(Employee).filter_by(attendance_code=code).first()
+        if not full_name:
+            raise ValueError(f"Missing full_name")
+
+        emp = None
+        if str(emp_id_raw).isdigit():
+            emp = session.query(Employee).filter_by(id=int(emp_id_raw)).first()
+
         if not emp:
-            if not full_name:
-                raise ValueError(f"Missing full_name for new employee code {code}")
-            emp = Employee(attendance_code=code, full_name=full_name)
+            emp = Employee(full_name=full_name)
             session.add(emp)
             
         emp.full_name = data.get('full_name', emp.full_name)
@@ -316,25 +320,20 @@ class LegacyImportService:
 
     @staticmethod
     def _import_attendance(session, data):
-        code_raw = data.get('attendance_code')
         emp_id_raw = data.get('employee_id')
         
-        if (not code_raw or str(code_raw).lower() == 'none') and (not emp_id_raw or str(emp_id_raw).lower() == 'none'):
-            return False # Skip row if both are missing
+        if not emp_id_raw or str(emp_id_raw).lower() == 'none':
+            return False # Skip row if missing
         
         emp = None
-        if code_raw and str(code_raw).lower() != 'none':
-            code = str(code_raw).strip()
-            emp = session.query(Employee).filter_by(attendance_code=code).first()
-            
-        if not emp and emp_id_raw and str(emp_id_raw).lower() != 'none':
+        if emp_id_raw and str(emp_id_raw).lower() != 'none':
             try:
                 emp = session.query(Employee).filter_by(id=int(emp_id_raw)).first()
             except ValueError:
                 pass
                 
         if not emp: 
-            raise ValueError("Employee not found using provided attendance_code or employee_id")
+            raise ValueError("Employee not found using provided employee_id")
 
         date_val = LegacyImportService._parse_date(data.get('date'))
         if not date_val: raise ValueError("Missing date")
@@ -510,25 +509,20 @@ class LegacyImportService:
 
     @staticmethod
     def _import_short_leaves(session, data):
-        code_raw = data.get('attendance_code')
         emp_id_raw = data.get('employee_id')
         
-        if (not code_raw or str(code_raw).lower() == 'none') and (not emp_id_raw or str(emp_id_raw).lower() == 'none'):
+        if not emp_id_raw or str(emp_id_raw).lower() == 'none':
             return False
 
         emp = None
-        if code_raw and str(code_raw).lower() != 'none':
-            code = str(code_raw).strip()
-            emp = session.query(Employee).filter_by(attendance_code=code).first()
-            
-        if not emp and emp_id_raw and str(emp_id_raw).lower() != 'none':
+        if emp_id_raw and str(emp_id_raw).lower() != 'none':
             try:
                 emp = session.query(Employee).filter_by(id=int(emp_id_raw)).first()
             except ValueError:
                 pass
                 
         if not emp: 
-            raise ValueError("Employee not found using provided attendance_code or employee_id")
+            raise ValueError("Employee not found using provided employee_id")
 
         date_val = LegacyImportService._parse_date(data.get('date'))
         start = LegacyImportService._parse_time(data.get('start_time'))
@@ -561,25 +555,20 @@ class LegacyImportService:
 
     @staticmethod
     def _import_bonuses(session, data):
-        code_raw = data.get('attendance_code')
         emp_id_raw = data.get('employee_id')
         
-        if (not code_raw or str(code_raw).lower() == 'none') and (not emp_id_raw or str(emp_id_raw).lower() == 'none'):
+        if not emp_id_raw or str(emp_id_raw).lower() == 'none':
             return False
 
         emp = None
-        if code_raw and str(code_raw).lower() != 'none':
-            code = str(code_raw).strip()
-            emp = session.query(Employee).filter_by(attendance_code=code).first()
-            
-        if not emp and emp_id_raw and str(emp_id_raw).lower() != 'none':
+        if emp_id_raw and str(emp_id_raw).lower() != 'none':
             try:
                 emp = session.query(Employee).filter_by(id=int(emp_id_raw)).first()
             except ValueError:
                 pass
                 
         if not emp: 
-            raise ValueError("Employee not found using provided attendance_code or employee_id")
+            raise ValueError("Employee not found using provided employee_id")
 
         try:
             month = int(data.get('month') or 0)
@@ -610,5 +599,38 @@ class LegacyImportService:
             bonus.is_percentage = is_percentage
             bonus.description = desc
             
+        return True
+
+    @staticmethod
+    def _import_salary_breakdowns(session, data):
+        emp_id_raw = data.get('employee_id')
+        if not emp_id_raw or str(emp_id_raw).lower() == 'none': return False
+
+        emp = None
+        if str(emp_id_raw).isdigit():
+            emp = session.query(Employee).filter_by(id=int(emp_id_raw)).first()
+        if not emp: raise ValueError("Employee not found")
+
+        try:
+            year = int(data.get('year') or date.today().year)
+        except:
+            raise ValueError("Year must be numeric")
+
+        valid_to_val = LegacyImportService._parse_date(data.get('valid_to'))
+
+        sb = session.query(SalaryBreakdown).filter_by(employee_id=emp.id, year=year).first()
+        if not sb:
+            sb = SalaryBreakdown(employee_id=emp.id, year=year)
+            session.add(sb)
+
+        sb.valid_to = valid_to_val
+        sb.basic = float(data.get('basic') or 0.0)
+        sb.house_rent_allowance = float(data.get('house_rent_allowance') or 0.0)
+        sb.conveyance = float(data.get('conveyance') or 0.0)
+        sb.medical = float(data.get('medical') or 0.0)
+        sb.mobile_bill = float(data.get('mobile_bill') or 0.0)
+        sb.transportation_allowance = float(data.get('transportation_allowance') or 0.0)
+        sb.other_allowance = float(data.get('other_allowance') or 0.0)
+
         return True
 

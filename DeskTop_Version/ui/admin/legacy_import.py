@@ -19,7 +19,8 @@ class LegacyImportModule(QWidget):
             "Leave Quotas": "leave_quotas",
             "Holiday Calendar": "holiday_calendar",
             "Short Leave": "short_leaves",
-            "Bonus": "bonuses"
+            "Bonus": "bonuses",
+            "Salary Breakdown": "salary_breakdowns"
         }
         self.init_ui()
         

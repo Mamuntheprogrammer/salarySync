@@ -243,7 +243,7 @@ class FaceManager(QWidget):
         employees = query.all()
         for emp in employees:
             status = "✅ Registered" if emp.face_encoding_path else "❌ Not Registered"
-            text = f"[{emp.attendance_code}] {emp.full_name} ({status})"
+            text = f"[{emp.id}] {emp.full_name} ({status})"
             self.emp_combo.addItem(text, emp.id)
         session.close()
 
@@ -363,7 +363,7 @@ class FaceManager(QWidget):
         
         if success:
             QMessageBox.information(self, "Success", message)
-            self.load_data() # Refresh list to show checkbox
+            self.load_employees() # Refresh list to show checkbox
         else:
             QMessageBox.warning(self, "Warning", message)
             

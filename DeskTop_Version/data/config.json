@@ -1,15 +1,15 @@
 {
     "company_name": "My Company",
-    "time_format": "12h",
+    "time_format": "24h",
     "db_path": "E:\\attensync\\salarySync\\DeskTop_Version\\data\\attensync_v3.db",
     "theme": "Dark",
     "backup_frequency": "daily",
     "backup_location": "E:\\attensync\\salarySync\\DeskTop_Version\\backups",
     "backup": {
-        "enabled": true,
+        "enabled": false,
         "frequency": "daily",
         "location": "E:\\attensync\\salarySync\\DeskTop_Version\\backups",
-        "last_backup_date": "2026-03-09"
+        "last_backup_date": null
     },
     "online_mode": false,
     "cloud_sync": {
@@ -20,8 +20,8 @@
         "connection_string": "",
         "last_backup": null
     },
-    "setup_complete": true,
     "face_recognition": {
-        "auto_clock_delay_seconds": 5
-    }
+        "auto_clock_delay_seconds": 3
+    },
+    "setup_complete": true
 }

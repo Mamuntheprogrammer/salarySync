@@ -25,7 +25,7 @@ def migrate():
         create_sql = """
         CREATE TABLE employees (
             id INTEGER PRIMARY KEY,
-            attendance_code VARCHAR(6) NOT NULL UNIQUE,
+            emp_code VARCHAR(6) NOT NULL UNIQUE,
             full_name VARCHAR(100) NOT NULL,
             joining_date DATE,
             salary_base FLOAT,
@@ -49,10 +49,10 @@ def migrate():
         # 3. Copy Data
         # We assume columns match by name/order.
         cursor.execute("""
-            INSERT INTO employees (id, attendance_code, full_name, joining_date, salary_base, company_id, 
+            INSERT INTO employees (id, emp_code, full_name, joining_date, salary_base, company_id, 
                                    business_area_id, designation_id, designation_subcategory_id, shift_id, 
                                    is_active, custom_shift_start, custom_shift_end)
-            SELECT id, attendance_code, full_name, joining_date, salary_base, company_id, 
+            SELECT id, emp_code, full_name, joining_date, salary_base, company_id, 
                    business_area_id, designation_id, designation_subcategory_id, shift_id, 
                    is_active, custom_shift_start, custom_shift_end
             FROM employees_old

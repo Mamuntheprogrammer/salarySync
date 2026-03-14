@@ -45,7 +45,7 @@ def run_test():
     
     # Add Employee
     ws_emp = wb["Employees"]
-    # attendance_code, full_name, company_code, area_code, shift_name, designation_name, subcategory_name, salary_base, is_active
+    # emp_code, full_name, company_code, area_code, shift_name, designation_name, subcategory_name, salary_base, is_active
     ws_emp.append(["999001", "Imported User", "IMP", "HQ", "", "", "", 5000, True])
     
     wb.save(tpl_path)
@@ -70,7 +70,7 @@ def run_test():
     # 6. Verify processed data in DB
     session = get_db_session()
     c = session.query(Company).filter_by(code="IMP").first()
-    e = session.query(Employee).filter_by(attendance_code="999001").first()
+    e = session.query(Employee).filter_by(emp_code="999001").first()
     
     if c and c.name == "Imported Corp":
         print("[SUCCESS] Company imported")

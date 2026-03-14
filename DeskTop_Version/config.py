@@ -21,7 +21,7 @@ class Config:
         "backup_frequency": "daily",
         "backup_location": str(BACKUP_DIR),
         "backup": {
-            "enabled": True,
+            "enabled": False,
             "frequency": "daily", # daily, weekly
             "location": str(BACKUP_DIR),
             "last_backup_date": None 

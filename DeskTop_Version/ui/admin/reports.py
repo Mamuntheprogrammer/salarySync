@@ -174,7 +174,7 @@ class InternalReportWidget(QWidget):
         if ba_id: query = query.filter_by(business_area_id=ba_id)
         
         for e in query.all():
-            self.emp_filter.addItem(f"{e.attendance_code}-{e.full_name}", e.id)
+            self.emp_filter.addItem(f"{e.id}-{e.full_name}", e.id)
             
         self.emp_filter.blockSignals(False)
         
@@ -186,30 +186,30 @@ class InternalReportWidget(QWidget):
         
     def setup_table_columns(self):
         if self.mode == "report_daily":
-            cols = ["Date", "Attendance Code", "Name", "Shift", "In", "Out", "Status"]
+            cols = ["Date", "Emp ID", "Name", "Shift", "In", "Out", "Status"]
         elif self.mode == "report_monthly":
-            cols = ["Attendance Code", "Name", "Month", "Present Days"]
+            cols = ["Emp ID", "Name", "Month", "Present Days"]
         elif self.mode == "report_leave":
-            cols = ["Date", "Attendance Code", "Name", "Type", "Duration/Reason", "Status"]
+            cols = ["Date", "Emp ID", "Name", "Type", "Duration/Reason", "Status"]
         elif self.mode == "report_late":
             cols = [] # Report disabled
         elif self.mode == "report_overtime":
-            cols = ["Date", "Attendance Code", "Name", "Clock Out", "Shift End", "OT Duration (h)"]
+            cols = ["Date", "Emp ID", "Name", "Clock Out", "Shift End", "OT Duration (h)"]
         elif self.mode == "report_master_summary":
             cols = [
-                "Attendance Code", "Emp ID", "Name", "Company", "Business Area", 
+                "Emp ID", "Name", "Company", "Business Area", 
                 "Total Days", "Working Days", "Present", "Absent", "Late Days",
                 "Working (HH:MM)", "Late (HH:MM)", "OT (HH:MM)", "Short Leave (HH:MM)", 
                 "Leaves Taken", "Remaining Leave"
             ]
         elif self.mode == "report_month_wise_attendance":
-            cols = ["Date", "Attendance Code", "Emp ID", "Name", "Company", "Business Area", "Shift", "In", "Out", "Status"]
+            cols = ["Date", "Emp ID", "Name", "Company", "Business Area", "Shift", "In", "Out", "Status"]
         elif self.mode == "report_employee_info":
-            cols = ["Employee ID", "Code", "Name", "Company", "Business Area", "Joining Date", "Base Salary", "Valid To", "Resign Status", "Resign Date", "Face Registered?"]
+            cols = ["Emp ID", "Name", "Company", "Business Area", "Joining Date", "Base Salary", "Valid To", "Resign Status", "Resign Date", "Face Registered?"]
         elif self.mode == "report_bonus":
-            cols = ["Period (YY-MM)", "Attendance Code", "Name", "Company", "Business Area", "Base Salary", "Bonus Rate/Amt", "Percentage?", "Bonus Payout"]
+            cols = ["Period (YY-MM)", "Emp ID", "Name", "Company", "Business Area", "Base Salary", "Bonus Rate/Amt", "Percentage?", "Bonus Payout"]
         elif self.mode == "report_payroll":
-            cols = ["Period (YY-MM)", "Attendance Code", "Name", "Total Present", "Total Absent", "OT Hrs", "OT Pay", "Late Ded.", "Leave Ded.", "Net Salary"]
+            cols = ["Period (YY-MM)", "Emp ID", "Name", "Total Present", "Total Absent", "OT Hrs", "OT Pay", "Late Ded.", "Leave Ded.", "Net Salary"]
         else:
             cols = []
             
@@ -275,7 +275,7 @@ class InternalReportWidget(QWidget):
             
             data = [
                 rec.date.strftime("%Y-%m-%d"),
-                rec.employee.attendance_code,
+                str(rec.employee.id),
                 rec.employee.full_name,
                 shift_name,
                 in_t,
@@ -296,7 +296,7 @@ class InternalReportWidget(QWidget):
             month_str = start.strftime("%B %Y")
             
             data = [
-                emp.attendance_code,
+                str(emp.id),
                 emp.full_name,
                 month_str,
                 str(stat.days)
@@ -315,7 +315,7 @@ class InternalReportWidget(QWidget):
             self.table.insertRow(row_idx)
             data = [
                 l.date.strftime("%Y-%m-%d"),
-                l.employee.attendance_code,
+                str(l.employee.id),
                 l.employee.full_name,
                 "Short Leave",
                 f"{l.start_time}-{l.end_time} ({l.reason})",
@@ -328,7 +328,7 @@ class InternalReportWidget(QWidget):
             self.table.insertRow(row_idx)
             data = [
                 f"{l.start_date} to {l.end_date}",
-                l.employee.attendance_code,
+                str(l.employee.id),
                 l.employee.full_name,
                 l.leave_type,
                 l.reason,
@@ -357,7 +357,7 @@ class InternalReportWidget(QWidget):
             
             data = [
                 rec.date.strftime("%Y-%m-%d"),
-                rec.employee.attendance_code,
+                str(rec.employee.id),
                 rec.employee.full_name,
                 out_t,
                 shift_end,
@@ -486,7 +486,6 @@ class InternalReportWidget(QWidget):
             remaining = total_quota - leaves_taken_days 
             
             data = [
-                emp.attendance_code,
                 str(emp.id),
                 emp.full_name,
                 emp.company.name if emp.company else "-",
@@ -596,7 +595,6 @@ class InternalReportWidget(QWidget):
                 
                 data = [
                     curr.strftime("%Y-%m-%d"),
-                    emp.attendance_code,
                     str(emp.id),
                     emp.full_name,
                     emp.company.name if emp.company else "-",
@@ -641,7 +639,7 @@ class InternalReportWidget(QWidget):
                 
                 data = [
                     period_str,
-                    emp.attendance_code,
+                    str(emp.id),
                     emp.full_name,
                     emp.company.name if emp.company else "-",
                     emp.business_area.name if emp.business_area else "-",
@@ -677,7 +675,7 @@ class InternalReportWidget(QWidget):
                 
                 data = [
                     period_str,
-                    emp.attendance_code,
+                    str(emp.id),
                     emp.full_name,
                     f"{p.total_present:.1f}",
                     f"{p.total_absent:.1f}",
@@ -712,7 +710,6 @@ class InternalReportWidget(QWidget):
             
             data = [
                 str(emp.id),
-                emp.attendance_code,
                 emp.full_name,
                 emp.company.name if emp.company else "-",
                 emp.business_area.name if emp.business_area else "-",

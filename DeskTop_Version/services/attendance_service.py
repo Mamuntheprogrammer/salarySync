@@ -7,18 +7,19 @@ from config import Config
 
 class AttendanceService:
     @staticmethod
-    def _resolve_employee(session: Session, code_or_id: str):
-        """Look up employee by attendance_code first, then by numeric id."""
-        emp = session.query(Employee).filter_by(attendance_code=code_or_id).first()
-        if not emp and code_or_id.isdigit():
-            emp = session.query(Employee).filter_by(id=int(code_or_id)).first()
-        return emp
+    def _resolve_employee(session: Session, employee_id_str: str):
+        """Look up employee by numeric id."""
+        try:
+            emp_id = int(employee_id_str)
+            return session.query(Employee).filter_by(id=emp_id).first()
+        except ValueError:
+            return None
 
     @staticmethod
     def clock_in(session: Session, employee_code: str) -> dict:
         employee = AttendanceService._resolve_employee(session, employee_code)
         if not employee:
-            return {"success": False, "message": "Invalid Employee Code / ID"}
+            return {"success": False, "message": "Invalid Employee ID"}
             
         if not employee.is_active:
              return {"success": False, "message": "Employee is inactive. Contact Admin."}
@@ -51,7 +52,7 @@ class AttendanceService:
     def clock_out(session: Session, employee_code: str) -> dict:
         employee = AttendanceService._resolve_employee(session, employee_code)
         if not employee:
-             return {"success": False, "message": "Invalid Employee Code / ID"}
+             return {"success": False, "message": "Invalid Employee ID"}
              
         if not employee.is_active:
              return {"success": False, "message": "Employee is inactive. Contact Admin."}
@@ -83,7 +84,7 @@ class AttendanceService:
     def record_short_leave(session: Session, employee_code: str, reason: str, start_time: time, end_time: time) -> dict:
         employee = AttendanceService._resolve_employee(session, employee_code)
         if not employee:
-             return {"success": False, "message": "Invalid Employee Code / ID"}
+             return {"success": False, "message": "Invalid Employee ID"}
              
         if not employee.is_active:
              return {"success": False, "message": "Employee is inactive. Contact Admin."}

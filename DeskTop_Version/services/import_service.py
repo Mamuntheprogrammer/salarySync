@@ -2,7 +2,7 @@ import openpyxl
 from openpyxl.styles import Font
 from sqlalchemy.orm import Session
 from database import get_db_session
-from models import Company, BusinessArea, Shift, Designation, DesignationSubcategory, Employee, HolidayCalendar, LeaveQuota, Attendance, ShortLeave
+from models import Company, BusinessArea, Shift, Designation, DesignationSubcategory, Employee, HolidayCalendar, LeaveQuota, Attendance, ShortLeave, SalaryBreakdown
 import os
 
 from datetime import datetime, time, date
@@ -62,17 +62,17 @@ class ImportService:
         ])
         
         # 6. Employees
-        create_sheet("Employees", ["attendance_code", "full_name", "company_code", "area_code", "shift_name", "designation_name", "subcategory_name", "salary_base", "is_active"], [
-            ["1001", "John Doe", "HQ01", "HR", "General", "Manager", "Senior", 50000, True],
-            ["1002", "Jane Smith", "HQ01", "IT", "Morning", "Developer", "Backend", 45000, True],
-            ["1003", "Alice Johnson", "HQ01", "IT", "Morning", "Developer", "Frontend", 42000, True],
-            ["1004", "Bob Brown", "HQ02", "MKT", "Evening", "Manager", "Junior", 35000, True],
-            ["1005", "Charlie Davis", "HQ02", "SAL", "Evening", "Sales Rep", "Field", 30000, True],
-            ["1006", "Eva Wilson", "HQ02", "SUP", "Night", "Team Lead", "", 40000, True],
-            ["1007", "Frank Miller", "BR01", "LOG", "General", "Intern", "", 15000, True],
-            ["1008", "Grace Lee", "BR01", "SEC", "Night", "Director", "Senior", 90000, True],
-            ["1009", "Henry Taylor", "HQ01", "FIN", "General", "Accountant", "", 38000, False],
-            ["1010", "Ivy Clark", "HQ01", "IT", "Split 1", "Designer", "UI/UX", 41000, True]
+        create_sheet("Employees", ["emp_id", "full_name", "company_code", "area_code", "shift_name", "designation_name", "subcategory_name", "salary_base", "is_active"], [
+            ["1", "John Doe", "HQ01", "HR", "General", "Manager", "Senior", 50000, True],
+            ["2", "Jane Smith", "HQ01", "IT", "Morning", "Developer", "Backend", 45000, True],
+            ["3", "Alice Johnson", "HQ01", "IT", "Morning", "Developer", "Frontend", 42000, True],
+            ["4", "Bob Brown", "HQ02", "MKT", "Evening", "Manager", "Junior", 35000, True],
+            ["5", "Charlie Davis", "HQ02", "SAL", "Evening", "Sales Rep", "Field", 30000, True],
+            ["6", "Eva Wilson", "HQ02", "SUP", "Night", "Team Lead", "", 40000, True],
+            ["7", "Frank Miller", "BR01", "LOG", "General", "Intern", "", 15000, True],
+            ["8", "Grace Lee", "BR01", "SEC", "Night", "Director", "Senior", 90000, True],
+            ["9", "Henry Taylor", "HQ01", "FIN", "General", "Accountant", "", 38000, False],
+            ["", "Ivy Clark", "HQ01", "IT", "Split 1", "Designer", "UI/UX", 41000, True]
         ])
         
         # 7. HolidayCalendar
@@ -91,35 +91,44 @@ class ImportService:
         ])
         
         # 8. LeaveQuota
-        # Fields: employee_code, leave_type, limit (days/hours), year
-        create_sheet("LeaveQuota", ["employee_code", "leave_type", "limit", "year"], [
-            ["1001", "Annual", 14, 2024], ["1001", "Sick", 10, 2024], ["1002", "Annual", 14, 2024], ["1002", "Sick", 10, 2024],
-            ["1003", "Annual", 14, 2024], ["1003", "Sick", 10, 2024], ["1004", "Annual", 14, 2024], ["1004", "Sick", 10, 2024],
-            ["1005", "Annual", 14, 2024], ["1005", "Sick", 10, 2024]
+        # Fields: emp_id, leave_type, limit (days/hours), year
+        create_sheet("LeaveQuota", ["emp_id", "leave_type", "limit", "year"], [
+            ["1", "Annual", 14, 2024], ["1", "Sick", 10, 2024], ["2", "Annual", 14, 2024], ["2", "Sick", 10, 2024],
+            ["3", "Annual", 14, 2024], ["3", "Sick", 10, 2024], ["4", "Annual", 14, 2024], ["4", "Sick", 10, 2024],
+            ["5", "Annual", 14, 2024], ["5", "Sick", 10, 2024]
         ])
         
         # 9. Attendance
-        # Fields: employee_code, emp_id, date (YYYY-MM-DD), clock_in (HH:MM), clock_out (HH:MM)
-        create_sheet("Attendance", ["employee_code", "emp_id", "date (YYYY-MM-DD)", "clock_in (HH:MM)", "clock_out (HH:MM)"], [
-            ["1001", "", "2024-01-01", "09:05", "18:10"], ["1001", "", "2024-01-02", "08:55", "18:05"], ["1001", "", "2024-01-03", "09:10", "18:15"],
-            ["1002", "", "2024-01-01", "06:05", "14:05"], ["1002", "", "2024-01-02", "06:00", "14:10"], ["1002", "", "2024-01-03", "06:02", "14:00"],
-            ["1003", "", "2024-01-01", "09:00", "18:00"], ["1003", "", "2024-01-02", "09:00", "18:00"], ["1003", "", "2024-01-03", "09:00", "18:00"],
-            ["1004", "", "2024-01-01", "14:10", "22:15"]
+        # Fields: emp_id, date (YYYY-MM-DD), clock_in (HH:MM), clock_out (HH:MM)
+        create_sheet("Attendance", ["emp_id", "date (YYYY-MM-DD)", "clock_in (HH:MM)", "clock_out (HH:MM)"], [
+            ["1", "2024-01-01", "09:05", "18:10"], ["1", "2024-01-02", "08:55", "18:05"], ["1", "2024-01-03", "09:10", "18:15"],
+            ["2", "2024-01-01", "06:05", "14:05"], ["2", "2024-01-02", "06:00", "14:10"], ["2", "2024-01-03", "06:02", "14:00"],
+            ["3", "2024-01-01", "09:00", "18:00"], ["3", "2024-01-02", "09:00", "18:00"], ["3", "2024-01-03", "09:00", "18:00"],
+            ["4", "2024-01-01", "14:10", "22:15"]
         ])
         
         # 10. ShortLeave
-        # Fields: employee_code, emp_id, date (YYYY-MM-DD), start_time (HH:MM), end_time (HH:MM), reason
-        create_sheet("ShortLeave", ["employee_code", "emp_id", "date (YYYY-MM-DD)", "start_time (HH:MM)", "end_time (HH:MM)", "reason"], [
-            ["1001", "", "2024-01-05", "10:00", "11:00", "Doctor appointment"],
-            ["1002", "", "2024-01-06", "14:00", "15:30", "Bank work"],
-            ["1003", "", "2024-01-07", "09:30", "10:00", "Personal errand"],
-            ["1004", "", "2024-01-08", "11:00", "12:00", "Emergency"],
-            ["1001", "", "2024-01-10", "15:00", "16:00", "Family matter"],
-            ["1002", "", "2024-01-11", "10:30", "11:30", "Medical checkup"],
-            ["1003", "", "2024-01-12", "13:00", "14:00", "Dental"],
-            ["1004", "", "2024-01-14", "09:00", "09:30", "Late arrival"],
-            ["1001", "", "2024-01-15", "16:00", "17:00", "Early exit"],
-            ["", "5",  "2024-01-16", "10:00", "11:00", "Example using emp_id only"]
+        # Fields: emp_id, date (YYYY-MM-DD), start_time (HH:MM), end_time (HH:MM), reason
+        create_sheet("ShortLeave", ["emp_id", "date (YYYY-MM-DD)", "start_time (HH:MM)", "end_time (HH:MM)", "reason"], [
+            ["1", "2024-01-05", "10:00", "11:00", "Doctor appointment"],
+            ["2", "2024-01-06", "14:00", "15:30", "Bank work"],
+            ["3", "2024-01-07", "09:30", "10:00", "Personal errand"],
+            ["4", "2024-01-08", "11:00", "12:00", "Emergency"],
+            ["1", "2024-01-10", "15:00", "16:00", "Family matter"],
+            ["2", "2024-01-11", "10:30", "11:30", "Medical checkup"],
+            ["3", "2024-01-12", "13:00", "14:00", "Dental"],
+            ["4", "2024-01-14", "09:00", "09:30", "Late arrival"],
+            ["1", "2024-01-15", "16:00", "17:00", "Early exit"],
+            ["5",  "2024-01-16", "10:00", "11:00", "Example"]
+        ])
+        
+        # 11. SalaryBreakdown
+        create_sheet("SalaryBreakdown", [
+            "emp_id", "year", "valid_to (YYYY-MM-DD)", "basic", "house_rent_allowance", "conveyance", 
+            "medical", "mobile_bill", "transportation_allowance", "other_allowance"
+        ], [
+            ["1", 2024, "2024-12-31", 20000, 10000, 5000, 3000, 1000, 2000, 9000],
+            ["2", 2024, "", 18000, 9000, 4000, 2000, 500, 1000, 10500]
         ])
         
         wb.save(file_path)
@@ -233,8 +242,8 @@ class ImportService:
                 ws = wb["Employees"]
                 for row in ws.iter_rows(min_row=2, values_only=True):
                     if not row[0]: continue
-                    # attendance_code, full_name, company_code, area_code, shift_name, designation_name, subcategory_name, salary_base, is_active
-                    acode = str(row[0])
+                    # emp_id, full_name, company_code, area_code, shift_name, designation_name, subcategory_name, salary_base, is_active
+                    emp_id_val = str(row[0]).strip() if row[0] else ""
                     fname = row[1]
                     ccode = str(row[2])
                     acode_ba = str(row[3])
@@ -262,7 +271,10 @@ class ImportService:
                         sub = session.query(DesignationSubcategory).filter_by(name=subname, designation_id=deg.id).first()
                     
                     # Upsert or Insert check
-                    emp = session.query(Employee).filter_by(attendance_code=acode).first()
+                    emp = None
+                    if emp_id_val and emp_id_val.isdigit():
+                        emp = session.query(Employee).filter_by(id=int(emp_id_val)).first()
+                        
                     if emp:
                         # Update?
                         emp.full_name = fname
@@ -276,7 +288,6 @@ class ImportService:
                         count += 1 # Count updates too?
                     else:
                         emp = Employee(
-                            attendance_code=acode,
                             full_name=fname,
                             company_id=comp.id,
                             business_area_id=ba.id,
@@ -364,45 +375,9 @@ class ImportService:
                 ws = wb["LeaveQuota"]
                 for row in ws.iter_rows(min_row=2, values_only=True):
                     if not row[0]: continue
-                    # employee_code, leave_type, limit, year
-                    acode = str(row[0])
-                    l_type = row[1]
-                    limit = float(row[2] or 0)
-                    year = int(row[3] or datetime.now().year)
-                    
-                    # Logic: We attach quotas directly to employees or globally? 
-                    # Model has company_id/business_area_id. 
-                    # But if we want individual overrides we attach to what? 
-                    # Wait, LeaveQuota model doesn't have employee_id! It's Company/BA level.
-                    # User requested: "LeaveQuota (New) - Employee Leave Balances"
-                    # Let's check model again... 
-                    # Step 293 showed: LeaveQuota has company_id, business_area_id. NO employee_id.
-                    # So quotas are Policy Objects, not balances?
-                    # Ah, user might have meant Leave Balances.
-                    # But commonly quotas are defined per policy.
-                    # "LeaveQuota (New) - Employee Leave Balances" suggest individual balance.
-                    # BUT the model I saw earlier (lines 184-198 of models.py) ONLY has company_id/business_area_id.
-                    # This implies valid quotas are set at Org Level.
-                    # Individual usage is tracked in LeaveRequest/Attendance.
-                    # Wait, user might interpret "Quota" as "Starting Balance".
-                    # If the Model doesn't support individual quota, I cannot import it per employee.
-                    # I will import it as COMPANY POLICY based on the first employee's company? Or as global policy if no comp/ba specified.
-                    # Actually, looking at the sample data I proposed: ["1001", "Annual", 14]
-                    # This implies per-employee. 
-                    # I must check if I can modify the model or if I should define it at BA level.
-                    # Given the model constraint, I will map it to the Employee's Company/BA as a POLICY.
-                    # OR... I made a mistake in the Plan assuming I can link to employee.
-                    # Let's verify the Model one more time.
-                    # Model: company_id, business_area_id.
-                    # So I should create a policy for the company/area found in the employee code?
-                    # Or simple: I'll skip "Employee Code" from import logic and just treat it as "Policy Definition"?
-                    # But the User asked for "Employee Leave Balances". 
-                    # If I create a "Annual Leave 14 Days" policy for Company X, it applies to all.
-                    # Let's do that for now to avoid Model Schema changes unless critical.
-                    # I will assume the user wants to define these policies.
-                    
-                    # Correction: I'll try to look up the employee to find their Company/BA and create the policy there.
-                    emp = session.query(Employee).filter_by(attendance_code=acode).first()
+                    emp = None
+                    if emp_id_val and emp_id_val.isdigit():
+                        emp = session.query(Employee).filter_by(id=int(emp_id_val)).first()
                     if emp:
                          # Check if policy exists for this company/ba/year/type
                          q = session.query(LeaveQuota).filter_by(
@@ -428,26 +403,22 @@ class ImportService:
                 ws = wb["Attendance"]
                 for row in ws.iter_rows(min_row=2, values_only=True):
                     if not row[0] and not row[1]: continue
-                    # employee_code, emp_id, date (YYYY-MM-DD), clock_in (HH:MM), clock_out (HH:MM)
-                    acode = str(row[0]).strip() if row[0] else ""
-                    emp_id_val = str(row[1]).strip() if row[1] else ""
+                    # emp_id, date (YYYY-MM-DD), clock_in (HH:MM), clock_out (HH:MM)
+                    emp_id_val = str(row[0]).strip() if row[0] else ""
                     date_val = None
-                    if isinstance(row[2], datetime): date_val = row[2].date()
-                    elif isinstance(row[2], date): date_val = row[2]
-                    elif isinstance(row[2], str):
-                        try: date_val = datetime.strptime(row[2], "%Y-%m-%d").date()
+                    if isinstance(row[1], datetime): date_val = row[1].date()
+                    elif isinstance(row[1], date): date_val = row[1]
+                    elif isinstance(row[1], str):
+                        try: date_val = datetime.strptime(row[1], "%Y-%m-%d").date()
                         except: pass
                         
                     if not date_val: continue
                     
-                    # Dual lookup: by attendance_code first, then by emp_id
                     emp = None
-                    if acode:
-                        emp = session.query(Employee).filter_by(attendance_code=acode).first()
-                    if not emp and emp_id_val and emp_id_val.isdigit():
+                    if emp_id_val and emp_id_val.isdigit():
                         emp = session.query(Employee).filter_by(id=int(emp_id_val)).first()
                     if not emp: 
-                        errors.append(f"Attendance: Employee '{acode or emp_id_val}' not found")
+                        errors.append(f"Attendance: Employee ID '{emp_id_val}' not found")
                         continue
                         
                     # Parse Times
@@ -460,8 +431,8 @@ class ImportService:
                             except: return None
                         return None
                         
-                    cin = parse_t(row[3])
-                    cout = parse_t(row[4])
+                    cin = parse_t(row[2])
+                    cout = parse_t(row[3])
                     
                     # Check duplicate
                     att = session.query(Attendance).filter_by(employee_id=emp.id, date=date_val).first()
@@ -481,26 +452,22 @@ class ImportService:
                 ws = wb["ShortLeave"]
                 for row in ws.iter_rows(min_row=2, values_only=True):
                     if not row[0] and not row[1]: continue
-                    # employee_code, emp_id, date (YYYY-MM-DD), start_time (HH:MM), end_time (HH:MM), reason
-                    acode = str(row[0]).strip() if row[0] else ""
-                    emp_id_val = str(row[1]).strip() if row[1] else ""
+                    # emp_id, date (YYYY-MM-DD), start_time (HH:MM), end_time (HH:MM), reason
+                    emp_id_val = str(row[0]).strip() if row[0] else ""
                     date_val = None
-                    if isinstance(row[2], datetime): date_val = row[2].date()
-                    elif isinstance(row[2], date): date_val = row[2]
-                    elif isinstance(row[2], str):
-                        try: date_val = datetime.strptime(row[2], "%Y-%m-%d").date()
+                    if isinstance(row[1], datetime): date_val = row[1].date()
+                    elif isinstance(row[1], date): date_val = row[1]
+                    elif isinstance(row[1], str):
+                        try: date_val = datetime.strptime(row[1], "%Y-%m-%d").date()
                         except: pass
 
                     if not date_val: continue
 
-                    # Dual lookup: by attendance_code first, then by emp_id
                     emp = None
-                    if acode:
-                        emp = session.query(Employee).filter_by(attendance_code=acode).first()
-                    if not emp and emp_id_val and emp_id_val.isdigit():
+                    if emp_id_val and emp_id_val.isdigit():
                         emp = session.query(Employee).filter_by(id=int(emp_id_val)).first()
                     if not emp:
-                        errors.append(f"ShortLeave: Employee '{acode or emp_id_val}' not found")
+                        errors.append(f"ShortLeave: Employee ID '{emp_id_val}' not found")
                         continue
 
                     # Parse start/end times
@@ -515,12 +482,12 @@ class ImportService:
                                 except: return None
                         return None
 
-                    start_t = parse_sl_time(row[3])
-                    end_t = parse_sl_time(row[4])
-                    reason = str(row[5]) if row[5] else ""
+                    start_t = parse_sl_time(row[2])
+                    end_t = parse_sl_time(row[3])
+                    reason = str(row[4]) if row[4] else ""
 
                     if not start_t or not end_t:
-                        errors.append(f"ShortLeave: Invalid times for {acode or emp_id_val} on {date_val}")
+                        errors.append(f"ShortLeave: Invalid times for {emp_id_val} on {date_val}")
                         continue
 
                     # Skip duplicates (same employee, date, start_time)
@@ -538,6 +505,51 @@ class ImportService:
                         )
                         session.add(sl)
                         count += 1
+                session.flush()
+
+            # 11. SalaryBreakdown
+            if "SalaryBreakdown" in selected_sheets and "SalaryBreakdown" in wb.sheetnames:
+                ws = wb["SalaryBreakdown"]
+                for row in ws.iter_rows(min_row=2, values_only=True):
+                    if not row[0] or not row[1]: continue
+                    emp_id_val = str(row[0]).strip()
+                    year_val = row[1]
+                    valid_to_val = row[2]
+                    
+                    if isinstance(valid_to_val, datetime): valid_to_val = valid_to_val.date()
+                    elif isinstance(valid_to_val, str) and valid_to_val:
+                        try: valid_to_val = datetime.strptime(valid_to_val, "%Y-%m-%d").date()
+                        except: valid_to_val = None
+                    else:
+                        valid_to_val = None
+                        
+                    emp = None
+                    if emp_id_val.isdigit():
+                        emp = session.query(Employee).filter_by(id=int(emp_id_val)).first()
+                        
+                    if not emp:
+                        errors.append(f"SalaryBreakdown: Employee ID '{emp_id_val}' not found")
+                        continue
+                        
+                    sb = session.query(SalaryBreakdown).filter_by(employee_id=emp.id, year=int(year_val)).first()
+                    
+                    if not sb:
+                        sb = SalaryBreakdown(
+                            employee_id=emp.id,
+                            year=int(year_val)
+                        )
+                        session.add(sb)
+                        
+                    sb.valid_to = valid_to_val
+                    sb.basic = float(row[3] or 0.0)
+                    sb.house_rent_allowance = float(row[4] or 0.0)
+                    sb.conveyance = float(row[5] or 0.0)
+                    sb.medical = float(row[6] or 0.0)
+                    sb.mobile_bill = float(row[7] or 0.0)
+                    sb.transportation_allowance = float(row[8] or 0.0)
+                    sb.other_allowance = float(row[9] or 0.0)
+                    
+                    count += 1
                 session.flush()
 
             session.commit()

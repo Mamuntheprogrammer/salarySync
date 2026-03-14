@@ -28,7 +28,7 @@ def run_test():
     session.add(ba)
     session.commit()
     
-    emp = Employee(attendance_code="123456", full_name="John User", company_id=company.id, business_area_id=ba.id)
+    emp = Employee(emp_code="123456", full_name="John User", company_id=company.id, business_area_id=ba.id)
     session.add(emp)
     session.commit()
     

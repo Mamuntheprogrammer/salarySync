@@ -48,7 +48,7 @@ def test_holiday_codes():
         # Employee: shift_id nullable=True. Good.
 
         e1 = Employee(
-            attendance_code="E001", 
+            emp_code="E001", 
             full_name="Emp 1", 
             company_id=c1.id, 
             business_area_id=ba1.id,

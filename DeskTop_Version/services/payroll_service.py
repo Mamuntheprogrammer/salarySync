@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import func
-from models import Employee, Attendance, PayrollConfig, ShortLeave, LeaveRequest, PayrollRecord, BonusRecord, Bonus
+from models import Employee, Attendance, PayrollConfig, ShortLeave, LeaveRequest, PayrollRecord, BonusRecord, Bonus, SalaryBreakdown
 from config import Config
 from datetime import datetime, date, timedelta
 import calendar
@@ -155,8 +155,12 @@ class PayrollService:
             except:
                 pass # default to setting
         
-        
-        daily_rate = employee.salary_base / divisor
+        breakdown = session.query(SalaryBreakdown).filter_by(employee_id=employee_id, year=year).first()
+        gross_salary = employee.salary_base
+        if breakdown:
+            gross_salary = breakdown.basic + breakdown.house_rent_allowance + breakdown.conveyance + breakdown.medical + breakdown.mobile_bill + breakdown.transportation_allowance + breakdown.other_allowance
+
+        daily_rate = gross_salary / divisor
         
         # Calculate Hourly Rate based on Shift Duration
         shift_details = ShiftService.get_employee_shift_details(employee)
@@ -202,7 +206,7 @@ class PayrollService:
         
         return {
             "employee_name": employee.full_name,
-            "base_salary": round(employee.salary_base, 2),
+            "base_salary": round(gross_salary, 2),
             "working_days": working_days,
             "present_days": present_days,
             "total_work_hours": round(total_work_hours, 2), # New 

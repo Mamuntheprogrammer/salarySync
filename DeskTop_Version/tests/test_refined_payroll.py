@@ -6,7 +6,7 @@ from datetime import date, datetime, timedelta
 
 def test_refinement():
     session = get_db_session()
-    emp = session.query(Employee).filter_by(attendance_code='500001').first()
+    emp = session.query(Employee).filter_by(emp_code='500001').first()
     
     today = date.today()
     month = today.month

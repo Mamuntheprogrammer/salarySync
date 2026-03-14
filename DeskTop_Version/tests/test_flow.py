@@ -50,14 +50,14 @@ def run_test():
         "shift_id": shift.id
     }
     employee = EmployeeService.create_employee(session, emp_data)
-    print(f"[OK] Employee Created: {employee.full_name} (Code: {employee.attendance_code})")
+    print(f"[OK] Employee Created: {employee.full_name} (Code: {employee.emp_code})")
     
     # 5. Simulate Attendance
     # Clock In (On time)
     # Mocking datetime.now() is hard directly, so we rely on the service using real time
     # Or we modify the record manually after creation to simulate past events
     
-    res_in = AttendanceService.clock_in(session, employee.attendance_code)
+    res_in = AttendanceService.clock_in(session, employee.emp_code)
     print(f"[Attendance] Clock In: {res_in['message']}")
     
     if not res_in['success']:
@@ -70,7 +70,7 @@ def run_test():
     session.commit()
     
     # Clock Out
-    res_out = AttendanceService.clock_out(session, employee.attendance_code)
+    res_out = AttendanceService.clock_out(session, employee.emp_code)
     print(f"[Attendance] Clock Out: {res_out['message']}")
     
     # Manually update clock_out to 5 PM

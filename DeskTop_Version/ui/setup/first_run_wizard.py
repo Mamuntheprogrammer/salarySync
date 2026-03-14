@@ -11,7 +11,6 @@ class FirstRunWizard(QWizard):
         self.setWizardStyle(QWizard.WizardStyle.ModernStyle)
         
         self.addPage(WelcomePage())
-        self.addPage(ConfigPage())
         self.addPage(DatabasePage())
         
         self.button(QWizard.WizardButton.FinishButton).clicked.connect(self.on_finish)
@@ -32,32 +31,10 @@ class WelcomePage(QWizardPage):
         self.setTitle("Welcome to AttenSync")
         layout = QVBoxLayout()
         layout.addWidget(QLabel("This wizard will guide you through the initial setup."))
-        layout.addWidget(QLabel("We will configure:\n- Company Details\n- Database Location\n- Backup Settings"))
+        layout.addWidget(QLabel("We will configure:\n- Database Location"))
         self.setLayout(layout)
 
-class ConfigPage(QWizardPage):
-    def __init__(self):
-        super().__init__()
-        self.setTitle("General Configuration")
-        layout = QVBoxLayout()
-        
-        layout.addWidget(QLabel("Time Format:"))
-        self.btn_group = QButtonGroup()
-        self.r1 = QRadioButton("12 Hour (AM/PM)")
-        self.r2 = QRadioButton("24 Hour")
-        self.r2.setChecked(True)
-        self.btn_group.addButton(self.r1)
-        self.btn_group.addButton(self.r2)
-        layout.addWidget(self.r1)
-        layout.addWidget(self.r2)
-        
-        self.setLayout(layout)
-    
-    def validatePage(self):
-        config = Config.load_config()
-        config['time_format'] = "12h" if self.r1.isChecked() else "24h"
-        Config.save_config(config)
-        return True
+
 
 class DatabasePage(QWizardPage):
     def __init__(self):

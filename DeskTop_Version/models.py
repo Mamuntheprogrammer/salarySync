@@ -63,7 +63,6 @@ class Employee(Base):
     __tablename__ = 'employees'
     
     id = Column(Integer, primary_key=True)
-    attendance_code = Column(String(6), unique=True, nullable=False)  # Auto-generated 6-digit code
     full_name = Column(String(100), nullable=False)
     # designation = Column(String(100)) # Deprecated
     joining_date = Column(Date, default=datetime.now)
@@ -100,6 +99,7 @@ class Employee(Base):
     attendance_records = relationship("Attendance", back_populates="employee", cascade="all, delete-orphan")
     leaves = relationship("ShortLeave", back_populates="employee", cascade="all, delete-orphan")
     bonuses = relationship("Bonus", back_populates="employee", cascade="all, delete-orphan")
+    salary_breakdowns = relationship("SalaryBreakdown", back_populates="employee", cascade="all, delete-orphan")
 
 class Attendance(Base):
     __tablename__ = 'attendance'
@@ -294,3 +294,22 @@ class BonusRecord(Base):
     generated_at = Column(DateTime, default=datetime.now)
 
     employee = relationship("Employee")
+
+class SalaryBreakdown(Base):
+    __tablename__ = 'salary_breakdowns'
+    
+    id = Column(Integer, primary_key=True)
+    employee_id = Column(Integer, ForeignKey('employees.id'), nullable=False)
+    year = Column(Integer, nullable=False)
+    valid_to = Column(Date, nullable=True)
+    
+    basic = Column(Float, nullable=False, default=0.0)
+    house_rent_allowance = Column(Float, nullable=False, default=0.0)
+    conveyance = Column(Float, nullable=False, default=0.0)
+    medical = Column(Float, nullable=False, default=0.0)
+    mobile_bill = Column(Float, nullable=False, default=0.0)
+    transportation_allowance = Column(Float, nullable=False, default=0.0)
+    other_allowance = Column(Float, nullable=False, default=0.0)
+    
+    # Relationships
+    employee = relationship("Employee", back_populates="salary_breakdowns")

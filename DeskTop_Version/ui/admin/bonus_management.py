@@ -45,7 +45,7 @@ class BonusManagement(QWidget):
         for row, b in enumerate(bonuses):
             self.table.insertRow(row)
             
-            emp_name = f"{b.employee.attendance_code} - {b.employee.full_name}" if b.employee else "Unknown"
+            emp_name = f"{b.employee.id} - {b.employee.full_name}" if b.employee else "Unknown"
             self.table.setItem(row, 0, QTableWidgetItem(emp_name))
             
             period_str = f"{b.year}-{b.month:02d}"
@@ -94,7 +94,7 @@ class BonusManagement(QWidget):
         
         emp_combo = QComboBox()
         for e in employees:
-            emp_combo.addItem(f"{e.attendance_code} - {e.full_name}", e.id)
+            emp_combo.addItem(f"{e.id} - {e.full_name}", e.id)
             
         if bonus_obj and bonus_obj.employee_id:
              idx = emp_combo.findData(bonus_obj.employee_id)

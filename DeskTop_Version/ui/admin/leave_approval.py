@@ -76,7 +76,7 @@ class LeaveApproval(QWidget):
         for row, req in enumerate(pending_full):
             self.full_table.insertRow(row)
             self.full_table.setItem(row, 0, QTableWidgetItem(str(req.id)))
-            self.full_table.setItem(row, 1, QTableWidgetItem(f"{req.employee.attendance_code} - {req.employee.full_name}"))
+            self.full_table.setItem(row, 1, QTableWidgetItem(f"{req.employee.id} - {req.employee.full_name}"))
             self.full_table.setItem(row, 2, QTableWidgetItem(req.leave_type))
             self.full_table.setItem(row, 3, QTableWidgetItem(str(req.start_date)))
             self.full_table.setItem(row, 4, QTableWidgetItem(str(req.end_date)))
@@ -106,7 +106,7 @@ class LeaveApproval(QWidget):
         for row, req in enumerate(pending_short):
             self.short_table.insertRow(row)
             self.short_table.setItem(row, 0, QTableWidgetItem(str(req.id)))
-            self.short_table.setItem(row, 1, QTableWidgetItem(f"{req.employee.attendance_code} - {req.employee.full_name}"))
+            self.short_table.setItem(row, 1, QTableWidgetItem(f"{req.employee.id} - {req.employee.full_name}"))
             self.short_table.setItem(row, 2, QTableWidgetItem(str(req.date)))
             self.short_table.setItem(row, 2, QTableWidgetItem(str(req.date)))
             

@@ -6,7 +6,7 @@ from datetime import date
 def test_payroll():
     session = get_db_session()
     # Employee 500001
-    emp = session.query(Employee).filter_by(attendance_code='500001').first()
+    emp = session.query(Employee).filter_by(emp_code='500001').first()
     if not emp:
         print("Employee 500001 not found")
         return
@@ -15,7 +15,7 @@ def test_payroll():
     month = today.month
     year = today.year
     
-    print(f"Calculating Payroll for {emp.full_name} ({emp.attendance_code}) - {month}/{year}")
+    print(f"Calculating Payroll for {emp.full_name} ({emp.emp_code}) - {month}/{year}")
     
     try:
         result = PayrollService.calculate_salary(session, emp.id, month, year)

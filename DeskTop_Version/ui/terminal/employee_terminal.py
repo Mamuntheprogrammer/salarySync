@@ -138,7 +138,7 @@ class EmployeeTerminal(QWidget):
 
         # Display
         self.code_display = QLineEdit()
-        self.code_display.setPlaceholderText("Enter Attendance Code or Employee ID")
+        self.code_display.setPlaceholderText("Enter Employee ID")
         self.code_display.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.code_display.setFont(QFont("Arial", 24))
         self.code_display.setEchoMode(QLineEdit.EchoMode.Password)
@@ -333,7 +333,7 @@ class EmployeeTerminal(QWidget):
                     emp = session.query(Employee).get(emp_id)
                     if emp:
                         self.last_recognized_name = emp.full_name
-                        self.last_recognized_code = emp.attendance_code
+                        self.last_recognized_code = str(emp.id)
                         if self.code_display.text() != self.last_recognized_code:
                             self.code_display.setText(self.last_recognized_code)
                     session.close()
@@ -372,7 +372,7 @@ class EmployeeTerminal(QWidget):
         emp = session.query(Employee).get(emp_id)
         if not emp: return
         
-        code = emp.attendance_code
+        code = str(emp.id)
         
         # Try clock IN
         result = AttendanceService.clock_in(session, code)
@@ -398,7 +398,7 @@ class EmployeeTerminal(QWidget):
     def get_code(self):
         code = self.code_display.text().strip()
         if not code:
-            self.status_label.setText("Please enter an Attendance Code or Employee ID")
+            self.status_label.setText("Please enter an Employee ID")
             return None
         return code
         
@@ -424,11 +424,9 @@ class EmployeeTerminal(QWidget):
         if not code: return
         
         session = get_db_session()
-        employee = session.query(Employee).filter_by(attendance_code=code).first()
-        if not employee and code.isdigit():
-            employee = session.query(Employee).filter_by(id=int(code)).first()
+        employee = session.query(Employee).filter_by(id=int(code)).first() if code.isdigit() else None
         if not employee:
-            self.status_label.setText("Invalid Code / Employee ID")
+            self.status_label.setText("Invalid Employee ID")
             self.status_label.setStyleSheet("color: red; font-weight: bold; font-size: 14px;")
             return
             

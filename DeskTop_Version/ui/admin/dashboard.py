@@ -126,8 +126,10 @@ class AdminDashboard(QWidget):
             "Payroll & Bonus": [
                 {"label": "Payroll Settings", "key": "payroll_config"},
                 {"label": "Bonus Manager", "key": "bonuses"},
+                {"label": "Salary Breakdowns", "key": "salary_breakdowns"},
                 {"label": "Run Payroll", "key": "payroll"},
                 {"label": "Run Bonus", "key": "bonus_run"},
+                {"label": "Print Documents", "key": "print_documents"},
             ],
             "Organization Setup": [
                 {"label": "Company Manager", "key": "companies"},
@@ -290,6 +292,10 @@ class AdminDashboard(QWidget):
         from .bonus_management import BonusManagement
         self.pages["bonuses"] = BonusManagement()
         
+        # Salary Breakdowns
+        from .salary_breakdown_manager import SalaryBreakdownManager
+        self.pages["salary_breakdowns"] = SalaryBreakdownManager()
+        
         # Backup
         from .backup_settings import BackupSettings
         self.pages["backup"] = BackupSettings()
@@ -301,6 +307,10 @@ class AdminDashboard(QWidget):
         # Payroll Config
         from .payroll_config_management import PayrollConfigManagement
         self.pages["payroll_config"] = PayrollConfigManagement()
+        
+        # Print Documents
+        from .print_documents import PrintDocumentsModule
+        self.pages["print_documents"] = PrintDocumentsModule(self.current_user.username)
         
         # Users 
         if self.current_user.role == "admin":

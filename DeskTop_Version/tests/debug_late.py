@@ -6,13 +6,13 @@ from datetime import date, datetime, timedelta
 def check_late():
     session = get_db_session()
     # Find employee 500001
-    emp = session.query(Employee).filter_by(attendance_code='500001').first()
+    emp = session.query(Employee).filter_by(emp_code='500001').first()
     if not emp:
         print("Employee 500001 not found")
         return
 
     today = date.today()
-    print(f"Checking for Employee: {emp.full_name} ({emp.attendance_code}) on {today}")
+    print(f"Checking for Employee: {emp.full_name} ({emp.emp_code}) on {today}")
 
     # Check Attendance
     att = session.query(Attendance).filter_by(employee_id=emp.id, date=today).first()

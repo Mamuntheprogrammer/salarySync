@@ -56,12 +56,12 @@ def run_test():
     # 5. Verify Attendance Blocking
     print("\n[Attendance Check]")
     # Active Clock In
-    res1 = AttendanceService.clock_in(session, e1.attendance_code)
+    res1 = AttendanceService.clock_in(session, e1.emp_code)
     if res1['success']: print("[SUCCESS] Active User can Clock In")
     else: print(f"[FAILURE] Active User blocked: {res1['message']}")
     
     # Inactive Clock In
-    res2 = AttendanceService.clock_in(session, e2.attendance_code)
+    res2 = AttendanceService.clock_in(session, e2.emp_code)
     if not res2['success'] and "inactive" in res2['message'].lower():
         print("[SUCCESS] Inactive User blocked from Clock In")
     else:

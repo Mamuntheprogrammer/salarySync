@@ -32,7 +32,7 @@ def test_payroll_logic():
     
     # Create Employee
     emp = Employee(
-        attendance_code="100001",
+        emp_code="100001",
         full_name="John Doe",
         company_id=comp.id,
         business_area_id=ba.id,

@@ -101,7 +101,7 @@ class LeaveRequestDialog(QDialog):
             
         res = AttendanceService.record_short_leave(
             self.session,
-            self.employee.attendance_code,
+            self.employee.id,
             reason,
             self.start_time.time().toPyTime(),
             self.end_time.time().toPyTime()

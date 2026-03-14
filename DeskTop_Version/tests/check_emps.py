@@ -7,4 +7,4 @@ emps = session.query(Employee).all()
 print(f"Total Employees: {len(emps)}")
 for e in emps:
     c_code = e.company.code if e.company else "None"
-    print(f"Emp: {e.full_name} ({e.attendance_code}) | Company: {c_code}")
+    print(f"Emp: {e.full_name} ({e.emp_code}) | Company: {c_code}")

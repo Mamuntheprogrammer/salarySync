@@ -105,7 +105,7 @@ class UserManagement(QWidget):
         emp_combo = QComboBox()
         emp_combo.addItem("None (System Admin)", None)
         for emp in employees:
-            emp_combo.addItem(f"{emp.attendance_code} - {emp.full_name}", emp.id)
+            emp_combo.addItem(f"{emp.id} - {emp.full_name}", emp.id)
             
         if user_obj and user_obj.employee_id:
             idx = emp_combo.findData(user_obj.employee_id)

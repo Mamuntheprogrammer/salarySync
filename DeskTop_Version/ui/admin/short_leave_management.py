@@ -47,7 +47,7 @@ class ShortLeaveManagement(QWidget):
             self.table.insertRow(row)
             self.table.setItem(row, 0, QTableWidgetItem(l.date.strftime("%Y-%m-%d")))
             
-            emp_name = f"{l.employee.attendance_code} - {l.employee.full_name}" if l.employee else "Unknown"
+            emp_name = f"{l.employee.id} - {l.employee.full_name}" if l.employee else "Unknown"
             self.table.setItem(row, 1, QTableWidgetItem(emp_name))
             
             self.table.setItem(row, 2, QTableWidgetItem(l.start_time.strftime("%H:%M")))
@@ -89,7 +89,7 @@ class ShortLeaveManagement(QWidget):
         
         emp_combo = QComboBox()
         for e in employees:
-            emp_combo.addItem(f"{e.attendance_code} - {e.full_name}", e.id)
+            emp_combo.addItem(f"{e.id} - {e.full_name}", e.id)
             
         if leave_obj and leave_obj.employee_id:
              idx = emp_combo.findData(leave_obj.employee_id)

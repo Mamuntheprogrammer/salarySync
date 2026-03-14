@@ -38,12 +38,12 @@ class AttendanceMaintenance(QWidget):
         
         # Table
         self.table = QTableWidget()
-        self.table.setColumnCount(6)
+        self.table.setColumnCount(5)
         self.table.setHorizontalHeaderLabels([
-            "Attendance Code", "Emp ID", "Employee", "In Time", "Out Time", "Action"
+            "Emp ID", "Employee", "In Time", "Out Time", "Action"
         ])
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
-        self.table.horizontalHeader().setSectionResizeMode(5, QHeaderView.ResizeMode.ResizeToContents)
+        self.table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeMode.ResizeToContents)
         layout.addWidget(self.table)
 
 
@@ -62,22 +62,20 @@ class AttendanceMaintenance(QWidget):
         for row, rec in enumerate(records):
             try:
                 emp = rec.employee
-                att_code = emp.attendance_code if emp else "-"
                 emp_id = str(emp.id) if emp else "-"
                 emp_name = emp.full_name if emp else "(Unknown)"
 
                 self.table.insertRow(row)
-                self.table.setItem(row, 0, QTableWidgetItem(att_code))
-                self.table.setItem(row, 1, QTableWidgetItem(emp_id))
-                self.table.setItem(row, 2, QTableWidgetItem(emp_name))
+                self.table.setItem(row, 0, QTableWidgetItem(emp_id))
+                self.table.setItem(row, 1, QTableWidgetItem(emp_name))
                 
                 time_fmt_str = Config.get_time_fmt()
                 
                 in_time = rec.clock_in.strftime(time_fmt_str) if rec.clock_in else "-"
                 out_time = rec.clock_out.strftime(time_fmt_str) if rec.clock_out else "-"
                 
-                self.table.setItem(row, 3, QTableWidgetItem(in_time))
-                self.table.setItem(row, 4, QTableWidgetItem(out_time))
+                self.table.setItem(row, 2, QTableWidgetItem(in_time))
+                self.table.setItem(row, 3, QTableWidgetItem(out_time))
                 
                 # Actions
                 action_widget = QWidget()
@@ -93,7 +91,7 @@ class AttendanceMaintenance(QWidget):
                 btn_del.clicked.connect(lambda ch, x=rec: self.delete_record(x))
                 action_layout.addWidget(btn_del)
                 
-                self.table.setCellWidget(row, 5, action_widget)
+                self.table.setCellWidget(row, 4, action_widget)
             except Exception as row_err:
                 print(f"[AttendanceMaintenance] Error loading row {row}: {row_err}")
 
@@ -113,43 +111,75 @@ class AttendanceMaintenance(QWidget):
         config = Config.load_config()
         time_fmt = Config.get_qt_time_fmt()
         
+        from PyQt6.QtWidgets import QDoubleSpinBox, QCheckBox, QHBoxLayout
+        
+        # Clock IN
+        in_layout = QHBoxLayout()
+        in_cb = QCheckBox("Set")
         in_input = QTimeEdit()
         in_input.setDisplayFormat(time_fmt)
+        in_input.setEnabled(False)
+        in_layout.addWidget(in_cb)
+        in_layout.addWidget(in_input)
+        
         if record.clock_in:
+            in_cb.setChecked(True)
+            in_input.setEnabled(True)
             in_input.setTime(record.clock_in.time())
             
+        in_cb.toggled.connect(in_input.setEnabled)
+            
+        # Clock OUT
+        out_layout = QHBoxLayout()
+        out_cb = QCheckBox("Set")
         out_input = QTimeEdit()
         out_input.setDisplayFormat(time_fmt)
+        out_input.setEnabled(False)
+        out_layout.addWidget(out_cb)
+        out_layout.addWidget(out_input)
+        
         if record.clock_out:
+            out_cb.setChecked(True)
+            out_input.setEnabled(True)
             out_input.setTime(record.clock_out.time())
             
-        from PyQt6.QtWidgets import QDoubleSpinBox
+        out_cb.toggled.connect(out_input.setEnabled)
         
-        
-        form.addRow("Clock In:", in_input)
-        form.addRow("Clock Out:", out_input)
+        form.addRow("Clock In:", in_layout)
+        form.addRow("Clock Out:", out_layout)
         
         # Removed dynamic calculation as duty/ot/short_leave fields are gone.
         
         btn_save = QPushButton("Update")
         btn_save.clicked.connect(lambda: self.save_record(dialog, record, 
-            in_input.time().toPyTime(), 
-            out_input.time().toPyTime()
+            in_cb.isChecked(), in_input.time().toPyTime(), 
+            out_cb.isChecked(), out_input.time().toPyTime()
         ))
         form.addRow(btn_save)
         
         dialog.exec()
         
-    def save_record(self, dialog, record, in_time, out_time):
+    def save_record(self, dialog, record, update_in, in_time, update_out, out_time):
         session = get_db_session()
         # Re-fetch to ensure attached to session
         rec = session.query(Attendance).get(record.id)
         
         # Combine date with time
-        if in_time:
+        if update_in:
             rec.clock_in = datetime.combine(rec.date, in_time)
-        if out_time:
+        else:
+            rec.clock_in = None
+            
+        if update_out:
             rec.clock_out = datetime.combine(rec.date, out_time)
+        else:
+            rec.clock_out = None
+            
+        # Validation
+        if rec.clock_in and rec.clock_out:
+            if rec.clock_out <= rec.clock_in:
+                QMessageBox.warning(dialog, "Warning", "Clock Out time must be greater than Clock In time.")
+                return
             
         # Allow manual override of calculated stats
         # late_hours removed

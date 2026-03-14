@@ -39,18 +39,18 @@ def run_test():
         "salary_base": 50000
     }
     employee = EmployeeService.create_employee(session, emp_data)
-    print(f"Created Employee: {employee.full_name} (Code: {employee.attendance_code})")
+    print(f"Created Employee: {employee.full_name} (Code: {employee.emp_code})")
     
     # 3. Test Clock In
     print("\n[Testing Clock In]")
-    res_in = AttendanceService.clock_in(session, employee.attendance_code)
+    res_in = AttendanceService.clock_in(session, employee.emp_code)
     print(f"Message: {res_in['message']}")
     
     # 4. Test Short Leave
     print("\n[Testing Short Leave]")
     res_leave = AttendanceService.record_short_leave(
         session, 
-        employee.attendance_code, 
+        employee.emp_code, 
         "Personal", 
         time(10, 0), 
         time(10, 30)
@@ -59,7 +59,7 @@ def run_test():
     
     # 5. Test Clock Out
     print("\n[Testing Clock Out]")
-    res_out = AttendanceService.clock_out(session, employee.attendance_code)
+    res_out = AttendanceService.clock_out(session, employee.emp_code)
     print(f"Message: {res_out['message']}")
     
     print("\n--- Verification Complete ---")

@@ -59,7 +59,7 @@ python main.py
 The application window is divided into two main sections:
 
 ### 1. Employee Terminal (Left Side)
-- **Clock In/Out**: Employees can enter their 6-digit Attendance Code or use Facial Recognition (if configured) to mark attendance.
+- **Clock In/Out**: Employees can enter their 6-digit Employee Code or use Facial Recognition (if configured) to mark attendance.
 - **Status**: Shows current date, time, and shift status.
 
 ### 2. Admin Portal (Right Side)

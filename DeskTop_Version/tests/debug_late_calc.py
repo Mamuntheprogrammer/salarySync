@@ -36,10 +36,10 @@ def test_late_calc():
             shift = ShiftService.create_shift(session, "LateTestShift", time(9,0), time(18,0), 15)
         
         # Employee
-        emp = session.query(Employee).filter_by(attendance_code="9999").first()
+        emp = session.query(Employee).filter_by(emp_code="9999").first()
         if not emp:
             emp = Employee(
-                attendance_code="9999", 
+                emp_code="9999", 
                 full_name="Late Tester", 
                 company=comp, 
                 business_area=ba,

@@ -6,18 +6,11 @@ from models import Employee, Company, BusinessArea
 from database import get_db_session
 
 class EmployeeService:
-    @staticmethod
-    def generate_attendance_code(session: Session) -> str:
-        """Generates a unique 6-digit numeric code."""
-        while True:
-            code = ''.join(random.choices(string.digits, k=6))
-            if not session.query(Employee).filter_by(attendance_code=code).first():
-                return code
 
     @staticmethod
     def create_employee(session: Session, data: dict) -> Employee:
         """
-        Creates a new employee with auto-generated attendance code.
+        Creates a new employee with auto-generated employee code.
         data dict should contain:
         - full_name
         - designation
@@ -30,11 +23,7 @@ class EmployeeService:
         - custom_shift_end (optional)
         """
         
-        # Generate code
-        attendance_code = EmployeeService.generate_attendance_code(session)
-        
         employee = Employee(
-            attendance_code=attendance_code,
             full_name=data['full_name'],
             # designation=data.get('designation'), # Removed
             joining_date=data.get('joining_date'),
@@ -75,9 +64,6 @@ class EmployeeService:
             return True
         return False
 
-    @staticmethod
-    def get_employee_by_code(session: Session, code: str) -> Employee:
-        return session.query(Employee).filter_by(attendance_code=code).first()
 
     @staticmethod
     def get_all_employees(session: Session, company_id=None):

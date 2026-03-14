@@ -25,10 +25,10 @@ def test_leave_flow():
         session.add(ba)
         session.flush()
     
-    emp = session.query(Employee).filter_by(attendance_code="888888").first()
+    emp = session.query(Employee).filter_by(emp_code="888888").first()
     if not emp:
         emp = Employee(
-            attendance_code="888888",
+            emp_code="888888",
             full_name="Leave Tester",
             company_id=comp.id,
             business_area_id=ba.id,
