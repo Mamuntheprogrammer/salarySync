@@ -118,6 +118,10 @@ class DesignationManagement(QWidget):
             action_layout.addWidget(btn_del)
             
             self.table_deg.setCellWidget(row, 2, action_widget)
+
+    def load_data(self):
+        """Alias for navigate() auto-refresh."""
+        self.load_designations()
             
     def delete_designation(self, deg):
         confirm = QMessageBox.question(self, "Confirm", f"Delete designation '{deg.name}'? This will delete all subcategories too.", 

@@ -208,6 +208,10 @@ class FaceManager(QWidget):
         self.company_combo.blockSignals(False)
         self.load_business_areas()
 
+    def load_data(self):
+        """Auto-refresh hook — reload employee dropdowns without touching camera."""
+        self.load_companies()
+
     def load_business_areas(self):
         comp_id = self.company_combo.currentData()
         self.ba_combo.blockSignals(True)

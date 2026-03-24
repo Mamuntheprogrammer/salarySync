@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker, scoped_session
 from sqlalchemy.ext.declarative import declarative_base
 from config import Config
@@ -22,10 +22,27 @@ class Database:
         
         # Create all tables
         Base.metadata.create_all(self.engine)
+
+        # Run incremental migrations for columns added after initial release
+        self._migrate()
         
         # Create session factory
         session_factory = sessionmaker(bind=self.engine)
         self.Session = scoped_session(session_factory)
+
+    def _migrate(self):
+        """Safely add new columns to existing tables (idempotent)."""
+        migrations = [
+            "ALTER TABLE shifts ADD COLUMN company_id INTEGER REFERENCES companies(id)",
+            "ALTER TABLE shifts ADD COLUMN business_area_id INTEGER REFERENCES business_areas(id)",
+        ]
+        with self.engine.connect() as conn:
+            for stmt in migrations:
+                try:
+                    conn.execute(text(stmt))
+                    conn.commit()
+                except Exception:
+                    pass  # Column already exists — safe to ignore
         
     def get_session(self):
         if not self.Session:
@@ -41,3 +58,4 @@ db = Database()
 
 def get_db_session():
     return db.get_session()
+

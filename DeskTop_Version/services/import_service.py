@@ -44,10 +44,18 @@ class ImportService:
             ["HQ02", "SAL", "Sales"], ["HQ02", "SUP", "Support"], ["HQ02", "R&D", "Research"], ["BR01", "LOG", "Logistics"], ["BR01", "SEC", "Security"]
         ])
         
-        # 3. Shifts
-        create_sheet("Shifts", ["name", "start_time (HH:MM)", "end_time (HH:MM)", "late_allowance_min"], [
-            ["General", "09:00", "18:00", 15], ["Morning", "06:00", "14:00", 10], ["Evening", "14:00", "22:00", 10], ["Night", "22:00", "06:00", 15], ["Early Bird", "05:00", "13:00", 5],
-            ["Late Shift", "11:00", "20:00", 20], ["Weekend A", "10:00", "16:00", 0], ["Weekend B", "12:00", "18:00", 0], ["Split 1", "08:00", "17:00", 15], ["Split 2", "10:00", "19:00", 15]
+        # 3. Shifts  (company_code / business_area_code are optional — leave blank for global)
+        create_sheet("Shifts", ["name", "start_time (HH:MM)", "end_time (HH:MM)", "late_allowance_min", "company_code", "business_area_code"], [
+            ["General",    "09:00", "18:00", 15, "",     ""],
+            ["Morning",    "06:00", "14:00", 10, "",     ""],
+            ["Evening",    "14:00", "22:00", 10, "",     ""],
+            ["Night",      "22:00", "06:00", 15, "",     ""],
+            ["Early Bird", "05:00", "13:00",  5, "",     ""],
+            ["Late Shift", "11:00", "20:00", 20, "",     ""],
+            ["Weekend A",  "10:00", "16:00",  0, "",     ""],
+            ["Weekend B",  "12:00", "18:00",  0, "",     ""],
+            ["HQ Morning", "08:00", "17:00", 15, "HQ01", "IT"],
+            ["HQ Night",   "20:00", "05:00", 15, "HQ01", ""],
         ])
         
         # 4. Designations
@@ -189,27 +197,51 @@ class ImportService:
                 ws = wb["Shifts"]
                 for row in ws.iter_rows(min_row=2, values_only=True):
                     if not row[0]: continue
-                    name, start_str, end_str, late = row[0], row[1], row[2], row[3]
-                    
+                    name      = row[0]
+                    start_str = row[1]
+                    end_str   = row[2]
+                    late      = row[3]
+                    co_code   = str(row[4]).strip() if len(row) > 4 and row[4] else ""
+                    ba_code   = str(row[5]).strip() if len(row) > 5 and row[5] else ""
+
                     # Basic parser for "HH:MM" or "HH:MM:SS"
                     def parse_time(t_val):
                         if isinstance(t_val, time): return t_val
                         if isinstance(t_val, datetime): return t_val.time()
                         if isinstance(t_val, str):
                             try: return datetime.strptime(t_val, "%H:%M").time()
-                            except: 
+                            except:
                                 try: return datetime.strptime(t_val, "%H:%M:%S").time()
                                 except: return None
                         return None
 
                     s_time = parse_time(start_str)
                     e_time = parse_time(end_str)
-                    
+
                     if s_time and e_time:
-                         if not session.query(Shift).filter_by(name=name).first():
-                             s = Shift(name=name, start_time=s_time, end_time=e_time, late_allowance_minutes=int(late or 15))
-                             session.add(s)
-                             count += 1
+                        # Resolve optional company / business-area scoping
+                        company_obj = session.query(Company).filter_by(code=co_code).first() if co_code else None
+                        ba_obj = None
+                        if company_obj and ba_code:
+                            ba_obj = session.query(BusinessArea).filter_by(
+                                code=ba_code, company_id=company_obj.id
+                            ).first()
+
+                        existing = session.query(Shift).filter_by(
+                            name=name,
+                            company_id=company_obj.id if company_obj else None,
+                        ).first()
+                        if not existing:
+                            s = Shift(
+                                name=name,
+                                start_time=s_time,
+                                end_time=e_time,
+                                late_allowance_minutes=int(late or 15),
+                                company_id=company_obj.id if company_obj else None,
+                                business_area_id=ba_obj.id if ba_obj else None,
+                            )
+                            session.add(s)
+                            count += 1
                 session.flush()
                 
             # 4. Designations
@@ -345,29 +377,40 @@ class ImportService:
                     if len(row) > 5: comp_code = row[5]
                     if len(row) > 6: ba_code = row[6]
 
+                    comp_id = None
+                    ba_id = None
+
+                    if comp_code and str(comp_code).strip():
+                        comp_obj = session.query(Company).filter_by(code=str(comp_code).strip()).first()
+                        if comp_obj:
+                            comp_id = comp_obj.id
+
+                    if ba_code and str(ba_code).strip() and comp_id:
+                        ba_obj = session.query(BusinessArea).filter_by(
+                            code=str(ba_code).strip(), company_id=comp_id
+                        ).first()
+                        if ba_obj:
+                            ba_id = ba_obj.id
+
                     if date_val:
-                         # Use filter with codes
-                         # Note: Optional uniqueness check? 
-                         # We should check if holiday exists for this specific scope.
-                         
-                         exists_query = session.query(HolidayCalendar).filter(
-                             HolidayCalendar.date == date_val,
-                             HolidayCalendar.company_code == comp_code,
-                             HolidayCalendar.business_area_code == ba_code
-                         )
-                         
-                         if not exists_query.first():
-                             h = HolidayCalendar(
-                                 description=name, 
-                                 date=date_val, 
-                                 type=h_type, 
-                                 is_ot_eligible=is_ot, 
-                                 year=int(year_val) if year_val else date_val.year,
-                                 company_code=comp_code,
-                                 business_area_code=ba_code
-                             )
-                             session.add(h)
-                             count += 1
+                        exists_query = session.query(HolidayCalendar).filter(
+                            HolidayCalendar.date == date_val,
+                            HolidayCalendar.company_id == comp_id,
+                            HolidayCalendar.business_area_id == ba_id,
+                        )
+
+                        if not exists_query.first():
+                            h = HolidayCalendar(
+                                description=name,
+                                date=date_val,
+                                type=h_type,
+                                is_ot_eligible=is_ot,
+                                year=int(year_val) if year_val else date_val.year,
+                                company_id=comp_id,
+                                business_area_id=ba_id,
+                            )
+                            session.add(h)
+                            count += 1
                 session.flush()
 
             # 8. LeaveQuota
@@ -375,27 +418,40 @@ class ImportService:
                 ws = wb["LeaveQuota"]
                 for row in ws.iter_rows(min_row=2, values_only=True):
                     if not row[0]: continue
-                    emp = None
-                    if emp_id_val and emp_id_val.isdigit():
-                        emp = session.query(Employee).filter_by(id=int(emp_id_val)).first()
-                    if emp:
-                         # Check if policy exists for this company/ba/year/type
-                         q = session.query(LeaveQuota).filter_by(
-                             company_id=emp.company_id, 
-                             business_area_id=emp.business_area_id,
-                             year=year,
-                             leave_type=l_type
-                         ).first()
-                         if not q:
-                             q = LeaveQuota(
-                                 company_id=emp.company_id,
-                                 business_area_id=emp.business_area_id,
-                                 year=year,
-                                 leave_type=l_type,
-                                 quota_limit=limit
-                             )
-                             session.add(q)
-                             count += 1
+                    # emp_id, leave_type, limit, year
+                    lq_emp_id_val = str(row[0]).strip() if row[0] else ""
+                    lq_leave_type = str(row[1]).strip() if row[1] else ""
+                    lq_limit = float(row[2] or 0)
+                    lq_year = int(row[3]) if row[3] else None
+
+                    if not lq_year or not lq_leave_type:
+                        errors.append(f"LeaveQuota: missing year or leave_type for emp '{lq_emp_id_val}'")
+                        continue
+
+                    lq_emp = None
+                    if lq_emp_id_val and lq_emp_id_val.isdigit():
+                        lq_emp = session.query(Employee).filter_by(id=int(lq_emp_id_val)).first()
+                    if lq_emp:
+                        q = session.query(LeaveQuota).filter_by(
+                            company_id=lq_emp.company_id,
+                            business_area_id=lq_emp.business_area_id,
+                            year=lq_year,
+                            leave_type=lq_leave_type,
+                        ).first()
+                        if not q:
+                            q = LeaveQuota(
+                                company_id=lq_emp.company_id,
+                                business_area_id=lq_emp.business_area_id,
+                                year=lq_year,
+                                leave_type=lq_leave_type,
+                                quota_limit=lq_limit,
+                            )
+                            session.add(q)
+                            count += 1
+                        else:
+                            q.quota_limit = lq_limit
+                    else:
+                        errors.append(f"LeaveQuota: Employee ID '{lq_emp_id_val}' not found")
                 session.flush()
 
             # 9. Attendance

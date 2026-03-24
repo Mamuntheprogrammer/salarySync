@@ -89,9 +89,11 @@ class AdminDashboard(QWidget):
         # 1. Sidebar Menu
         sidebar = QFrame()
         sidebar.setStyleSheet("background-color: #333; color: white;")
-        sidebar.setFixedWidth(220) # Slightly wider for indents
+        sidebar.setMinimumWidth(200)
+        sidebar.setMaximumWidth(260)
         sidebar_layout = QVBoxLayout(sidebar)
         sidebar_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+
         
         # App Title
         app_title = QLabel(f"AttenSync Admin\n({self.current_user.username})")
@@ -133,6 +135,7 @@ class AdminDashboard(QWidget):
             ],
             "Organization Setup": [
                 {"label": "Company Manager", "key": "companies"},
+                {"label": "Business Area Manager", "key": "business_areas"},
                 {"label": "Designation Manager", "key": "designations"},
                 {"label": "Shift Manager", "key": "shifts"},
                 {"label": "Holiday & Weekly", "key": "calendars"},
@@ -235,6 +238,10 @@ class AdminDashboard(QWidget):
         # Companies
         from .company_management import CompanyManagement
         self.pages["companies"] = CompanyManagement()
+
+        # Business Areas
+        from .business_area_management import BusinessAreaManagement
+        self.pages["business_areas"] = BusinessAreaManagement()
         
         # Employees
         from .employee_management import EmployeeManagement
@@ -340,11 +347,13 @@ class AdminDashboard(QWidget):
         widget = self.pages[target_key]
         self.content_area.setCurrentWidget(widget)
         
-        # Auto-Refresh / Set Mode
+        # Auto-Refresh / Set Mode — try all known refresh hooks in order
         if mode and hasattr(widget, "set_mode"):
             widget.set_mode(mode)
         elif hasattr(widget, "load_data"):
             widget.load_data()
+        elif hasattr(widget, "refresh_data"):
+            widget.refresh_data()
         elif hasattr(widget, "refresh"):
             widget.refresh()
         

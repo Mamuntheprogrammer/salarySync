@@ -157,7 +157,7 @@ class CloudSetup(QWidget):
             success, msg = service.pull_from_remote_db(uri)
             
             if success:
-                 self.lbl_status.setText(f"Backup Complete: {datetime.now().strftime('%H:%M:%S')}")
+                 self.lbl_status.setText(f"Backup Complete: {datetime.now().strftime('%I:%M:%S %p')}")
                  QMessageBox.information(self, "Success", "Remote data backed up to Local DB.")
             else:
                  self.lbl_status.setText("Backup Failed.")

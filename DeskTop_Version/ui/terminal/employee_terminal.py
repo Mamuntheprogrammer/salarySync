@@ -10,6 +10,7 @@ from models import Employee
 from database import get_db_session
 from config import Config
 from datetime import date
+from ui.dialogs.attendance_popup import AttendancePopupDialog
 import cv2
 
 class EmployeeTerminal(QWidget):
@@ -193,7 +194,8 @@ class EmployeeTerminal(QWidget):
         for text, row, col in buttons:
             btn = QPushButton(text)
             btn.setFont(QFont("Arial", 14))
-            btn.setFixedSize(70, 50)
+            btn.setMinimumSize(60, 46)
+            btn.setSizePolicy(btn.sizePolicy().horizontalPolicy(), btn.sizePolicy().verticalPolicy())
             btn.setStyleSheet("""
                 QPushButton { border: 1px solid #ddd; border-radius: 4px; background-color: #f9f9f9; }
                 QPushButton:hover { background-color: #eeeeee; }
@@ -248,7 +250,7 @@ class EmployeeTerminal(QWidget):
             self.camera.release()
             self.camera = None
         self.is_camera_running = False
-        self.video_label.clear()
+        self.video_label.setPixmap(QPixmap())   # force-blank the frame
         self.video_label.setText("Camera Offline")
         self.btn_toggle_cam.setText("Turn On Camera")
         self.btn_toggle_cam.setStyleSheet("""
@@ -380,11 +382,11 @@ class EmployeeTerminal(QWidget):
             # They must be trying to clock out!
             result = AttendanceService.clock_out(session, code)
             
-        self.handle_result(result)
         self.recent_actions[emp_id] = QTime.currentTime()
         self.code_display.clear()
         self.lbl_face_status.setText("Success! Stepping away...")
         self.lbl_face_status.setStyleSheet("color: green; font-size: 18px; font-weight: bold;")
+        self.handle_result(result)
 
     def on_keypad_click(self, text):
         current = self.code_display.text()
@@ -441,11 +443,34 @@ class EmployeeTerminal(QWidget):
 
     def handle_result(self, result):
         if result['success']:
-            self.status_label.setText(result['message'])
-            self.status_label.setStyleSheet("color: green; font-weight: bold; font-size: 14px;")
             self.code_display.clear()
-            # Clear status after 3 seconds
-            QTimer.singleShot(5000, lambda: self.status_label.setText(""))
+
+            # Pause camera rendering while dialog is open so no stale frame appears
+            was_running = self.is_camera_running
+            if was_running:
+                self.timer.stop()
+                self.video_label.setPixmap(QPixmap())  # force-blank before dialog opens
+                self.video_label.setText("Please wait...")
+
+            # Show the rich popup dialog
+            popup = AttendancePopupDialog(self, result)
+            popup.exec()
+
+            # Act on user choice
+            if popup.action == "done":
+                self.btn_toggle_cam.click()  # same as user pressing "Turn Off Camera"
+            elif was_running:
+                # Continue — resume live feed
+                self.video_label.clear()
+                self.timer.start(30)
+
+            # Reset face status text
+            self.lbl_face_status.setText(
+                "Scanning for faces..." if self.is_camera_running else "Turn on camera for face detection."
+            )
+            self.lbl_face_status.setStyleSheet(
+                "color: #666; font-size: 14px; font-weight: bold; border: none; margin-top: 10px;"
+            )
         else:
             self.status_label.setText(result['message'])
             self.status_label.setStyleSheet("color: red; font-weight: bold; font-size: 14px;")

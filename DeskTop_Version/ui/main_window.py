@@ -1,4 +1,4 @@
-from PyQt6.QtWidgets import QMainWindow, QWidget, QHBoxLayout, QVBoxLayout, QFrame
+from PyQt6.QtWidgets import QMainWindow, QWidget, QHBoxLayout, QVBoxLayout, QFrame, QApplication
 from .terminal.employee_terminal import EmployeeTerminal
 from .admin.login_dialog import AdminLoginWidget
 
@@ -6,7 +6,19 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("AttenSync - HRMS & Terminal")
-        self.resize(1000, 600)
+
+        # --- Responsive startup: 80% of the screen that the app is on ---
+        screen = QApplication.primaryScreen().availableGeometry()
+        w = min(int(screen.width() * 0.82), 1440)
+        h = min(int(screen.height() * 0.85), 900)
+        self.resize(w, h)
+        # Centre on screen
+        self.move(
+            screen.x() + (screen.width() - w) // 2,
+            screen.y() + (screen.height() - h) // 2,
+        )
+        self.setMinimumSize(900, 580)
+
         
         # Global Stylesheet for standardizing list/table hovers
         self.setStyleSheet("""

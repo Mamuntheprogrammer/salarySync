@@ -28,7 +28,7 @@ class AttendanceService:
         attendance = session.query(Attendance).filter_by(employee_id=employee.id, date=today).first()
         
         if attendance and attendance.clock_in:
-             return {"success": False, "message": f"Already Clocked In at {attendance.clock_in.strftime('%H:%M')}"}
+             return {"success": False, "message": f"Already Clocked In at {attendance.clock_in.strftime('%I:%M %p')}"}
              
         if not attendance:
             attendance = Attendance(employee_id=employee.id, date=today)
@@ -41,11 +41,17 @@ class AttendanceService:
         
         session.commit()
         
+        business_area_name = employee.business_area.name if employee.business_area else "N/A"
         return {
-            "success": True, 
-            "message": f"{employee.full_name} - Check In at {attendance.clock_in.strftime(Config.get_time_fmt())}", 
-            "time": attendance.clock_in.strftime(Config.get_time_fmt()),
-            "employee_name": employee.full_name
+            "success": True,
+            "action": "check_in",
+            "message": f"{employee.full_name} - Check In at {attendance.clock_in.strftime(Config.get_time_fmt())}",
+            "employee_id": str(employee.id),
+            "employee_name": employee.full_name,
+            "business_area": business_area_name,
+            "clock_in": attendance.clock_in.strftime(Config.get_time_fmt()),
+            "clock_out": None,
+            "total_hours": None,
         }
 
     @staticmethod
@@ -64,7 +70,7 @@ class AttendanceService:
              return {"success": False, "message": "You have not clocked in yet"}
              
         if attendance.clock_out:
-             return {"success": False, "message": f"Already Clocked Out at {attendance.clock_out.strftime('%H:%M')}"}
+             return {"success": False, "message": f"Already Clocked Out at {attendance.clock_out.strftime('%I:%M %p')}"}
              
         attendance.clock_out = datetime.now()
         
@@ -73,11 +79,26 @@ class AttendanceService:
         
         session.commit()
         
+        # Calculate total working hours
+        total_hours = None
+        if attendance.clock_in and attendance.clock_out:
+            delta = attendance.clock_out - attendance.clock_in
+            total_secs = int(delta.total_seconds())
+            hours, rem = divmod(total_secs, 3600)
+            mins = rem // 60
+            total_hours = f"{hours}h {mins:02d}m"
+
+        business_area_name = employee.business_area.name if employee.business_area else "N/A"
         return {
-            "success": True, 
+            "success": True,
+            "action": "check_out",
             "message": f"{employee.full_name} - Check Out at {attendance.clock_out.strftime(Config.get_time_fmt())}",
-            "time": attendance.clock_out.strftime(Config.get_time_fmt()),
-             "employee_name": employee.full_name
+            "employee_id": str(employee.id),
+            "employee_name": employee.full_name,
+            "business_area": business_area_name,
+            "clock_in": attendance.clock_in.strftime(Config.get_time_fmt()) if attendance.clock_in else "N/A",
+            "clock_out": attendance.clock_out.strftime(Config.get_time_fmt()),
+            "total_hours": total_hours,
         }
 
     @staticmethod

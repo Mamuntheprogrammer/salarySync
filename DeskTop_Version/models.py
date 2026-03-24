@@ -55,9 +55,16 @@ class Shift(Base):
     start_time = Column(Time, nullable=False)
     end_time = Column(Time, nullable=False)
     late_allowance_minutes = Column(Integer, default=15)
-    
+
+    # Scope (nullable = global / applies across all companies/areas)
+    company_id = Column(Integer, ForeignKey('companies.id'), nullable=True)
+    business_area_id = Column(Integer, ForeignKey('business_areas.id'), nullable=True)
+
     # Relationships
     employees = relationship("Employee", back_populates="shift")
+    company = relationship("Company", foreign_keys=[company_id])
+    business_area = relationship("BusinessArea", foreign_keys=[business_area_id])
+
 
 class Employee(Base):
     __tablename__ = 'employees'

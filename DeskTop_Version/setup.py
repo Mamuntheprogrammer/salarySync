@@ -33,7 +33,12 @@ root_modules = [
 # ----------------------------
 include_files = [
     ("logo.ico", "logo.ico"),
-    ("data/", "data/"),
+    # NOTE: Do NOT include 'data/' here.
+    # The app creates this folder fresh on first run via Config.ensure_directories().
+    # Bundling 'data/' would ship the developer's own database and config.json
+    # (which has setup_complete=True), causing the first-run wizard to be skipped
+    # and a pre-populated database to be used by new installations.
+    #
     # UI, Services and Utils sub-packages are Python packages —
     # cx_Freeze handles them automatically via 'packages' below.
     # But we include the raw .py files in case any dynamic import
@@ -117,15 +122,13 @@ build_exe_options = {
         "PyQt6",
     ],
 
-    # Modules with no actual Python code to collect (avoid warnings)
+    # Modules that are safe to exclude to reduce build size.
+    # NOTE: Do NOT exclude 'unittest' — bcrypt uses it internally.
     "excludes": [
         "tkinter",
-        "unittest",
         "distutils",
-        "setuptools",
         "pydoc",
         "doctest",
-        "argparse",
     ],
 
     # Keep the build cleaner by not including test sub-packages

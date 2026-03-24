@@ -122,7 +122,7 @@ class InternalReportWidget(QWidget):
         header.setDefaultAlignment(Qt.AlignmentFlag.AlignCenter | Qt.AlignmentFlag.AlignVCenter)
         header.setMinimumSectionSize(80)
         header.setDefaultSectionSize(120)
-        header.setFixedHeight(48)   # Two-line header height
+        header.setMinimumHeight(36)   # Two-line header height, can grow on high-DPI
         self.table.setWordWrap(True)
         layout.addWidget(self.table)
         

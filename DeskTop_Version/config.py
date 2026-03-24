@@ -1,3 +1,4 @@
+import sys
 import os
 import json
 from pathlib import Path
@@ -6,8 +7,16 @@ class Config:
     APP_NAME = "AttenSync HRMS"
     VERSION = "1.0.0"
     
-    # Default Paths
-    BASE_DIR = Path(__file__).resolve().parent
+    # When frozen by cx_Freeze, __file__ resolves to a path INSIDE
+    # library.zip which is not a real filesystem path — any mkdir()
+    # call on it will fail. We must use the directory of the EXE instead.
+    if getattr(sys, 'frozen', False):
+        # Running as a compiled cx_Freeze executable
+        BASE_DIR = Path(sys.executable).resolve().parent
+    else:
+        # Running normally in development
+        BASE_DIR = Path(__file__).resolve().parent
+
     DATA_DIR = BASE_DIR / "data"
     BACKUP_DIR = BASE_DIR / "backups"
     CONFIG_FILE = DATA_DIR / "config.json"
@@ -15,7 +24,7 @@ class Config:
     # Default Configuration
     DEFAULT_CONFIG = {
         "company_name": "My Company",
-        "time_format": "24h", # 12h or 24h
+        "time_format": "12h", # 12h or 24h
         "db_path": str(DATA_DIR / "attensync_v3.db"),
         "theme": "Dark",
         "backup_frequency": "daily",
@@ -87,12 +96,10 @@ class Config:
 
     @classmethod
     def get_time_fmt(cls):
-        """Returns Python strftime format string"""
-        config = cls.load_config()
-        return "%I:%M %p" if config.get("time_format") == "12h" else "%H:%M"
+        """Returns Python strftime format string — always 12-hour with AM/PM"""
+        return "%I:%M %p"
 
     @classmethod
     def get_qt_time_fmt(cls):
-        """Returns Qt time format string"""
-        config = cls.load_config()
-        return "hh:mm AP" if config.get("time_format") == "12h" else "HH:mm"
+        """Returns Qt time format string — always 12-hour with AM/PM"""
+        return "hh:mm AP"

@@ -115,7 +115,6 @@ class EmployeeManagement(QWidget):
     def edit_employee_dialog(self, emp):
         session = get_db_session()
         companies = session.query(Company).all()
-        shifts = session.query(Shift).all()
         designations = session.query(Designation).all()
         
         # Ensure session is fresh or re-attach objects?
@@ -166,16 +165,33 @@ class EmployeeManagement(QWidget):
         salary_input.setRange(0, 1000000)
         salary_input.setValue(emp.salary_base)
         
-        # Shift
+        # Shift — filter to company/BA scope + global shifts
         shift_combo = QComboBox()
         shift_combo.setStyleSheet(combo_style)
-        shift_combo.addItem("None", None)
-        sel_shift_idx = 0
-        for i, s in enumerate(shifts):
-            shift_combo.addItem(f"{s.name} ({s.start_time}-{s.end_time})", s.id)
-            if emp.shift_id and s.id == emp.shift_id:
-                sel_shift_idx = i + 1
-        shift_combo.setCurrentIndex(sel_shift_idx)
+
+        def _refresh_shifts_edit(current_shift_id=None):
+            shift_combo.blockSignals(True)
+            shift_combo.clear()
+            shift_combo.addItem("None", None)
+            cid = company_combo.currentData()
+            ba_id = ba_combo.currentData()
+            from sqlalchemy import or_
+            q = session.query(Shift)
+            if cid:
+                q = q.filter(or_(Shift.company_id == None, Shift.company_id == cid))
+            if ba_id:
+                q = q.filter(or_(Shift.business_area_id == None, Shift.business_area_id == ba_id))
+            sel_idx = 0
+            for i, s in enumerate(q.order_by(Shift.name).all()):
+                shift_combo.addItem(f"{s.name} ({s.start_time.strftime('%I:%M %p')}-{s.end_time.strftime('%I:%M %p')})", s.id)
+                if (current_shift_id or emp.shift_id) and s.id == (current_shift_id or emp.shift_id):
+                    sel_idx = i + 1
+            shift_combo.setCurrentIndex(sel_idx)
+            shift_combo.blockSignals(False)
+
+        company_combo.currentIndexChanged.connect(lambda: _refresh_shifts_edit())
+        ba_combo.currentIndexChanged.connect(lambda: _refresh_shifts_edit())
+        _refresh_shifts_edit()
 
         # Custom Shift Times
         custom_start = QTimeEdit()
@@ -315,7 +331,6 @@ class EmployeeManagement(QWidget):
     def add_employee_dialog(self):
         session = get_db_session()
         companies = session.query(Company).all()
-        shifts = session.query(Shift).all()
         designations = session.query(Designation).all()
         
         if not companies:
@@ -369,9 +384,31 @@ class EmployeeManagement(QWidget):
         
         shift_combo = QComboBox()
         shift_combo.setStyleSheet(combo_style)
-        shift_combo.addItem("None", None)
-        for s in shifts:
-            shift_combo.addItem(f"{s.name} ({s.start_time}-{s.end_time})", s.id)
+
+        def _refresh_shifts_add():
+            shift_combo.blockSignals(True)
+            prev = shift_combo.currentData()
+            shift_combo.clear()
+            shift_combo.addItem("None", None)
+            cid = company_combo.currentData()
+            ba_id_v = ba_combo.currentData()
+            from sqlalchemy import or_
+            q = session.query(Shift)
+            if cid:
+                q = q.filter(or_(Shift.company_id == None, Shift.company_id == cid))
+            if ba_id_v:
+                q = q.filter(or_(Shift.business_area_id == None, Shift.business_area_id == ba_id_v))
+            sel_idx = 0
+            for i, s in enumerate(q.order_by(Shift.name).all()):
+                shift_combo.addItem(f"{s.name} ({s.start_time.strftime('%I:%M %p')}-{s.end_time.strftime('%I:%M %p')})", s.id)
+                if s.id == prev:
+                    sel_idx = i + 1
+            shift_combo.setCurrentIndex(sel_idx)
+            shift_combo.blockSignals(False)
+
+        company_combo.currentIndexChanged.connect(_refresh_shifts_add)
+        ba_combo.currentIndexChanged.connect(_refresh_shifts_add)
+        _refresh_shifts_add()
             
         custom_start = QTimeEdit()
         custom_start.setDisplayFormat("HH:mm:ss")

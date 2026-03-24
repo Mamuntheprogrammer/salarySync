@@ -29,6 +29,11 @@ class CalendarManagement(QWidget):
         self.load_holidays()
         self.load_weekly()
 
+    def load_data(self):
+        """Auto-refresh hook called by navigate()."""
+        self.load_holidays()
+        self.load_weekly()
+
     # --- TAB 1: Public Holidays ---
     def create_holiday_tab(self):
         widget = QWidget()
