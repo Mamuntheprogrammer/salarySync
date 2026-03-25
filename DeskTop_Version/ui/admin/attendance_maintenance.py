@@ -1,3 +1,5 @@
+from ui.custom_widgets import make_input_group
+from ui.btn_styles import btn_small_edit, btn_small_delete, btn_small_neutral, btn_primary, btn_neutral
 from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton, 
                              QLabel, QTableWidget, QTableWidgetItem, QDateEdit, 
                              QHeaderView, QMessageBox, QDialog, QTimeEdit, QFormLayout)
@@ -25,12 +27,12 @@ class AttendanceMaintenance(QWidget):
         self.date_filter.setCalendarPopup(True)
         self.date_filter.setDate(QDate.currentDate())
         self.date_filter.dateChanged.connect(self.load_data)
-        header.addWidget(QLabel("Date:"))
-        header.addWidget(self.date_filter)
+        header.addWidget(make_input_group("Date", self.date_filter, 60))
         
         header.addStretch()
         
         btn_refresh = QPushButton("Refresh")
+        btn_refresh.setStyleSheet(btn_neutral())
         btn_refresh.clicked.connect(self.load_data)
         header.addWidget(btn_refresh)
         
@@ -43,7 +45,11 @@ class AttendanceMaintenance(QWidget):
             "Emp ID", "Employee", "In Time", "Out Time", "Action"
         ])
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
-        self.table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeMode.ResizeToContents)
+        self.table.verticalHeader().setDefaultSectionSize(36)
+        self.table.verticalHeader().hide()
+
+        self.table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeMode.Fixed)
+        self.table.setColumnWidth(4, 160)
         layout.addWidget(self.table)
 
 
@@ -83,11 +89,12 @@ class AttendanceMaintenance(QWidget):
                 action_layout.setContentsMargins(2, 2, 2, 2)
                 
                 btn_edit = QPushButton("Edit")
+                btn_edit.setStyleSheet(btn_small_edit())
                 btn_edit.clicked.connect(lambda checked, r=rec: self.edit_record(r))
                 action_layout.addWidget(btn_edit)
                 
                 btn_del = QPushButton("Delete")
-                btn_del.setStyleSheet("color: red")
+                btn_del.setStyleSheet(btn_small_delete())
                 btn_del.clicked.connect(lambda ch, x=rec: self.delete_record(x))
                 action_layout.addWidget(btn_del)
                 
@@ -145,12 +152,13 @@ class AttendanceMaintenance(QWidget):
             
         out_cb.toggled.connect(out_input.setEnabled)
         
-        form.addRow("Clock In:", in_layout)
-        form.addRow("Clock Out:", out_layout)
+        form.addRow(make_input_group("Clock In:", in_layout))
+        form.addRow(make_input_group("Clock Out:", out_layout))
         
         # Removed dynamic calculation as duty/ot/short_leave fields are gone.
         
         btn_save = QPushButton("Update")
+        btn_save.setStyleSheet(btn_primary())
         btn_save.clicked.connect(lambda: self.save_record(dialog, record, 
             in_cb.isChecked(), in_input.time().toPyTime(), 
             out_cb.isChecked(), out_input.time().toPyTime()

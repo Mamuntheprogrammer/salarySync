@@ -1,3 +1,5 @@
+from ui.custom_widgets import make_input_group
+from ui.btn_styles import btn_primary, btn_neutral, btn_danger
 from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton, 
                              QLabel, QLineEdit, QCheckBox, QGroupBox, QMessageBox, QFormLayout)
 from PyQt6.QtCore import Qt
@@ -24,9 +26,10 @@ class CloudSetup(QWidget):
         
         self.txt_remote_uri = QLineEdit()
         self.txt_remote_uri.setPlaceholderText("postgresql://user:pass@host:port/dbname")
-        form.addRow("Connection String:", self.txt_remote_uri)
+        form.addRow(make_input_group("Connection String:", self.txt_remote_uri))
         
         btn_test = QPushButton("Test Connection")
+        btn_test.setStyleSheet(btn_primary())
         btn_test.clicked.connect(self.test_connection)
         form.addRow(btn_test)
         
@@ -55,6 +58,7 @@ class CloudSetup(QWidget):
         hbox = QHBoxLayout()
         
         btn_save = QPushButton("Save Settings")
+        btn_save.setStyleSheet(btn_primary())
         btn_save.clicked.connect(self.save_settings)
         hbox.addWidget(btn_save)
         
@@ -65,14 +69,14 @@ class CloudSetup(QWidget):
         # Push Local -> Remote
         btn_push = QPushButton("Push Local -> Remote")
         btn_push.setToolTip("Uploads current Local Data to Remote DB (Overwrite Remote)")
-        btn_push.setStyleSheet("background-color: #E91E63; color: white;")
+        btn_push.setStyleSheet(btn_primary())
         btn_push.clicked.connect(self.push_data)
         hbox2.addWidget(btn_push)
         
         # Pull Remote -> Local (Backup)
         btn_backup = QPushButton("Backup Remote -> Local")
         btn_backup.setToolTip("Downloads Remote Data to Local DB (Overwrite Local)")
-        btn_backup.setStyleSheet("background-color: #2196F3; color: white;")
+        btn_backup.setStyleSheet(btn_primary())
         btn_backup.clicked.connect(self.pull_data)
         hbox2.addWidget(btn_backup)
         

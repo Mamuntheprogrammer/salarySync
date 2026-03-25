@@ -1,3 +1,5 @@
+from ui.custom_widgets import make_input_group
+from ui.btn_styles import btn_small_delete, btn_small_edit, btn_neutral, btn_primary
 from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton, 
                              QLabel, QTableWidget, QTableWidgetItem, QDialog, 
                              QLineEdit, QFormLayout, QMessageBox, QHeaderView, QComboBox, 
@@ -53,10 +55,12 @@ class CalendarManagement(QWidget):
         tools.addStretch()
         
         btn_add = QPushButton("Add Holiday")
+        btn_add.setStyleSheet(btn_primary())
         btn_add.clicked.connect(lambda: self.add_holiday_dialog(holiday_obj=None))
         tools.addWidget(btn_add)
         
         btn_refresh = QPushButton("Refresh")
+        btn_refresh.setStyleSheet(btn_neutral())
         btn_refresh.clicked.connect(self.load_holidays)
         tools.addWidget(btn_refresh)
         
@@ -69,8 +73,11 @@ class CalendarManagement(QWidget):
         # Table
         self.hol_table = QTableWidget()
         self.hol_table.setColumnCount(7)
+
         self.hol_table.setHorizontalHeaderLabels(["Date", "Description", "Type", "Company Code", "Business Area", "OT Eligible", "Action"])
         self.hol_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        self.hol_table.verticalHeader().setDefaultSectionSize(36)
+        self.hol_table.verticalHeader().hide()
         layout.addWidget(self.hol_table)
         
         return widget
@@ -97,15 +104,17 @@ class CalendarManagement(QWidget):
             
             # Action Column with Edit/Delete
             action_widget = QWidget()
+            action_widget.setStyleSheet("background: transparent;")
             action_layout = QHBoxLayout(action_widget)
             action_layout.setContentsMargins(0, 0, 0, 0)
             
             btn_edit = QPushButton("Edit")
+            btn_edit.setStyleSheet(btn_small_edit())
             btn_edit.clicked.connect(lambda ch, x=h: self.add_holiday_dialog(holiday_obj=x))
             action_layout.addWidget(btn_edit)
             
             btn_del = QPushButton("Delete")
-            btn_del.setStyleSheet("color: red")
+            btn_del.setStyleSheet(btn_small_delete())
             btn_del.clicked.connect(lambda ch, x=h: self.delete_holiday(x))
             action_layout.addWidget(btn_del)
             
@@ -222,14 +231,15 @@ class CalendarManagement(QWidget):
                 index = ba_input.findData(holiday_obj.business_area_id)
                 if index >= 0: ba_input.setCurrentIndex(index)
         
-        form.addRow("Date:", date_input)
-        form.addRow("Description:", desc_input)
-        form.addRow("Type:", type_input)
-        form.addRow("OT Eligible:", ot_input)
-        form.addRow("Company:", comp_input)
-        form.addRow("Business Area:", ba_input)
+        form.addRow(make_input_group("Date:", date_input))
+        form.addRow(make_input_group("Description:", desc_input))
+        form.addRow(make_input_group("Type:", type_input))
+        form.addRow(make_input_group("OT Eligible:", ot_input))
+        form.addRow(make_input_group("Company:", comp_input))
+        form.addRow(make_input_group("Business Area:", ba_input))
         
         btn_save = QPushButton("Save")
+        btn_save.setStyleSheet(btn_primary())
         def save():
             if not desc_input.text(): 
                 QMessageBox.warning(dialog, "Warning", "Description is required")
@@ -292,10 +302,12 @@ class CalendarManagement(QWidget):
         
         tools = QHBoxLayout()
         btn_add = QPushButton("Add Weekly Rule")
+        btn_add.setStyleSheet(btn_primary())
         btn_add.clicked.connect(self.add_weekly_dialog)
         tools.addWidget(btn_add)
         
         btn_refresh = QPushButton("Refresh")
+        btn_refresh.setStyleSheet(btn_neutral())
         btn_refresh.clicked.connect(self.load_weekly)
         tools.addWidget(btn_refresh)
         
@@ -304,8 +316,11 @@ class CalendarManagement(QWidget):
         
         self.weekly_table = QTableWidget()
         self.weekly_table.setColumnCount(4)
+
         self.weekly_table.setHorizontalHeaderLabels(["Scope", "Day", "Target", "Action"])
         self.weekly_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        self.weekly_table.verticalHeader().setDefaultSectionSize(36)
+        self.weekly_table.verticalHeader().hide()
         layout.addWidget(self.weekly_table)
         
         return widget
@@ -339,15 +354,17 @@ class CalendarManagement(QWidget):
             
             # Action Column with Edit/Delete
             action_widget = QWidget()
+            action_widget.setStyleSheet("background: transparent;")
             action_layout = QHBoxLayout(action_widget)
             action_layout.setContentsMargins(0, 0, 0, 0)
             
             btn_edit = QPushButton("Edit")
+            btn_edit.setStyleSheet(btn_small_edit())
             btn_edit.clicked.connect(lambda ch, x=r: self.add_weekly_dialog(weekly_obj=x))
             action_layout.addWidget(btn_edit)
             
             btn_del = QPushButton("Delete")
-            btn_del.setStyleSheet("color: red")
+            btn_del.setStyleSheet(btn_small_delete())
             btn_del.clicked.connect(lambda ch, x=r: self.delete_weekly(x))
             action_layout.addWidget(btn_del)
             
@@ -446,13 +463,14 @@ class CalendarManagement(QWidget):
                          idx_ba = ba_input.findData(weekly_obj.business_area_id)
                          if idx_ba >= 0: ba_input.setCurrentIndex(idx_ba)
 
-        form.addRow("Mode:", scope_layout)
-        form.addRow("Day:", day_input)
-        form.addRow("Company:", comp_input)
-        form.addRow("Business Area:", ba_input)
-        form.addRow("Shift:", shift_input)
+        form.addRow(make_input_group("Mode:", scope_layout))
+        form.addRow(make_input_group("Day:", day_input))
+        form.addRow(make_input_group("Company:", comp_input))
+        form.addRow(make_input_group("Business Area:", ba_input))
+        form.addRow(make_input_group("Shift:", shift_input))
         
         btn_save = QPushButton("Save")
+        btn_save.setStyleSheet(btn_primary())
         def save():
             day_idx = day_input.currentIndex()
             

@@ -1,3 +1,4 @@
+from ui.btn_styles import btn_small_edit, btn_small_delete, btn_small_neutral, btn_primary, btn_neutral
 from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton, 
                              QLabel, QTableWidget, QTableWidgetItem, QDialog, 
                              QFormLayout, QMessageBox, QHeaderView, QComboBox, 
@@ -22,11 +23,15 @@ class ShortLeaveManagement(QWidget):
         header.addWidget(QLabel("<h2>Short Leave Manager</h2>"))
         
         btn_refresh = QPushButton("Refresh")
+        btn_refresh.setStyleSheet(btn_neutral())
         btn_refresh.clicked.connect(self.load_data)
-        header.addWidget(btn_refresh)
         
         btn_add = QPushButton("Add Short Leave")
+        btn_add.setStyleSheet(btn_primary())
         btn_add.clicked.connect(lambda: self.add_dialog(None))
+        
+        header.addStretch()
+        header.addWidget(btn_refresh)
         header.addWidget(btn_add)
         
         layout.addLayout(header)
@@ -34,8 +39,13 @@ class ShortLeaveManagement(QWidget):
         # Table
         self.table = QTableWidget()
         self.table.setColumnCount(7)
+
         self.table.setHorizontalHeaderLabels(["Date", "Employee", "Start Time", "End Time", "Reason", "Status", "Actions"])
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        self.table.verticalHeader().setDefaultSectionSize(36)
+        self.table.verticalHeader().hide()
+        self.table.horizontalHeader().setSectionResizeMode(6, QHeaderView.ResizeMode.Fixed)
+        self.table.setColumnWidth(6, 160)
         layout.addWidget(self.table)
         
     def load_data(self):
@@ -57,15 +67,17 @@ class ShortLeaveManagement(QWidget):
             
             # Actions
             action_widget = QWidget()
+            action_widget.setStyleSheet("background: transparent;")
             action_layout = QHBoxLayout(action_widget)
             action_layout.setContentsMargins(2, 2, 2, 2)
             
             btn_edit = QPushButton("Edit")
+            btn_edit.setStyleSheet(btn_small_edit())
             btn_edit.clicked.connect(lambda ch, x=l: self.add_dialog(x))
             action_layout.addWidget(btn_edit)
             
             btn_delete = QPushButton("Delete")
-            btn_delete.setStyleSheet("background-color: #f44336; color: white;")
+            btn_delete.setStyleSheet(btn_small_delete())
             btn_delete.clicked.connect(lambda ch, x=l: self.delete_leave(x))
             action_layout.addWidget(btn_delete)
             
@@ -129,6 +141,7 @@ class ShortLeaveManagement(QWidget):
         form.addRow("Status:", status_combo)
         
         btn_save = QPushButton("Save")
+        btn_save.setStyleSheet(btn_primary())
         btn_save.clicked.connect(lambda: self.save_leave(dialog, leave_obj, {
             "employee_id": emp_combo.currentData(),
             "date": date_input.date().toPyDate(),

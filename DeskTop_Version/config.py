@@ -26,7 +26,7 @@ class Config:
         "company_name": "My Company",
         "time_format": "12h", # 12h or 24h
         "db_path": str(DATA_DIR / "attensync_v3.db"),
-        "theme": "Dark",
+        "theme": "Light",
         "backup_frequency": "daily",
         "backup_location": str(BACKUP_DIR),
         "backup": {

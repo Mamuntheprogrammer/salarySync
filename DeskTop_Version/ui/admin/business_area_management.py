@@ -1,3 +1,4 @@
+from ui.custom_widgets import make_input_group
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel,
     QTableWidget, QTableWidgetItem, QDialog, QLineEdit,
@@ -63,10 +64,12 @@ class BusinessAreaManagement(QWidget):
         self.table.setColumnCount(6)
         self.table.setHorizontalHeaderLabels(["ID", "Code", "Name", "Company", "Shifts", "Actions"])
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
-        self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
-        self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
-        self.table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeMode.ResizeToContents)
-        self.table.horizontalHeader().setSectionResizeMode(5, QHeaderView.ResizeMode.ResizeToContents)
+        self.table.verticalHeader().setDefaultSectionSize(36)
+        self.table.verticalHeader().hide()
+
+
+
+
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.table.setAlternatingRowColors(True)
@@ -181,7 +184,7 @@ class BusinessAreaManagement(QWidget):
                 if cmb_company.itemData(i) == ba_obj.company_id:
                     cmb_company.setCurrentIndex(i)
                     break
-        form.addRow("Company:", cmb_company)
+        form.addRow(make_input_group("Company:", cmb_company))
 
         # Code
         txt_code = QLineEdit()
@@ -189,14 +192,14 @@ class BusinessAreaManagement(QWidget):
         txt_code.setPlaceholderText("2-digit code, e.g. 01")
         if ba_obj:
             txt_code.setText(ba_obj.code)
-        form.addRow("Area Code (2 digits):", txt_code)
+        form.addRow(make_input_group("Area Code (2 digits):", txt_code))
 
         # Name
         txt_name = QLineEdit()
         txt_name.setPlaceholderText("e.g. Head Office, Factory, Warehouse")
         if ba_obj:
             txt_name.setText(ba_obj.name)
-        form.addRow("Area Name:", txt_name)
+        form.addRow(make_input_group("Area Name:", txt_name))
 
         # Button row
         btn_row = QHBoxLayout()

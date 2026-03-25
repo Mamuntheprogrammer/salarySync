@@ -1,3 +1,5 @@
+from ui.custom_widgets import make_input_group
+from ui.btn_styles import btn_primary, btn_neutral
 from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton, 
                              QLabel, QTableWidget, QTableWidgetItem, QComboBox, 
                              QHeaderView, QMessageBox, QSpinBox)
@@ -30,32 +32,30 @@ class PayrollModule(QWidget):
         self.month_sel.addItems(["January", "February", "March", "April", "May", "June", 
                                  "July", "August", "September", "October", "November", "December"])
         self.month_sel.setCurrentIndex(date.today().month - 1)
-        header.addWidget(self.month_sel)
+        header.addWidget(make_input_group("Month", self.month_sel, 60))
         
         self.year_sel = QSpinBox()
         self.year_sel.setRange(2020, 2030)
         self.year_sel.setValue(date.today().year)
-        self.year_sel = QSpinBox()
-        self.year_sel.setRange(2020, 2030)
-        self.year_sel.setValue(date.today().year)
-        header.addWidget(self.year_sel)
+        header.addWidget(make_input_group("Year", self.year_sel, 60))
         
         # Filters
         self.company_combo = QComboBox()
         self.company_combo.addItem("All Companies", None)
         self.company_combo.currentIndexChanged.connect(self.on_company_change)
-        header.addWidget(self.company_combo)
+        header.addWidget(make_input_group("Company", self.company_combo, 80))
         
         self.ba_combo = QComboBox()
         self.ba_combo.addItem("All Areas", None)
-        header.addWidget(self.ba_combo)
+        header.addWidget(make_input_group("Area", self.ba_combo, 60))
         
         btn_calc = QPushButton("Calculate Payroll")
+        btn_calc.setStyleSheet(btn_neutral())
         btn_calc.clicked.connect(self.calculate_payroll)
         header.addWidget(btn_calc)
         
         btn_save = QPushButton("Save to Database")
-        btn_save.setStyleSheet("background-color: #2e7d32; color: white;")
+        btn_save.setStyleSheet(btn_primary())
         btn_save.clicked.connect(self.save_to_database)
         header.addWidget(btn_save)
         
@@ -65,10 +65,15 @@ class PayrollModule(QWidget):
         # Table
         self.table = QTableWidget()
         self.table.setColumnCount(12)
+
         self.table.setHorizontalHeaderLabels([
             "Employee", "Base Salary", "Work Hrs", "Present Days", "Late Ded.", "Late Days Pen.", "Short Lv Ded.", "OT Pay", "Hol. OT Pay", "Net Salary", "Divisor", "Status"
         ])
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        self.table.verticalHeader().setDefaultSectionSize(36)
+        self.table.verticalHeader().hide()
+        self.table.horizontalHeader().setSectionResizeMode(11, QHeaderView.ResizeMode.Fixed)
+        self.table.setColumnWidth(11, 160)
         layout.addWidget(self.table)
         
     def calculate_payroll(self):

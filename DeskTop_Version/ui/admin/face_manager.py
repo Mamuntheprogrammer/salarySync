@@ -1,3 +1,4 @@
+from ui.btn_styles import btn_primary, btn_neutral, btn_danger
 import cv2
 from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton, 
                              QLabel, QComboBox, QMessageBox, QFrame, QSpinBox)
@@ -104,7 +105,7 @@ class FaceManager(QWidget):
         self.delay_spinbox.setValue(config.get("face_recognition", {}).get("auto_clock_delay_seconds", 3))
         
         self.btn_save_settings = QPushButton("Save Delay")
-        self.btn_save_settings.setStyleSheet("background-color: #9E9E9E; color: white; padding: 5px; font-weight: bold; border-radius: 4px;")
+        self.btn_save_settings.setStyleSheet(btn_neutral())
         self.btn_save_settings.clicked.connect(self.save_settings)
         
         settings_layout.addWidget(self.delay_spinbox)

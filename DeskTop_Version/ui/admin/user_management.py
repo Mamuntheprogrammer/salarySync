@@ -1,3 +1,4 @@
+from ui.btn_styles import btn_small_edit, btn_small_delete, btn_small_neutral, btn_primary, btn_neutral
 from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton, 
                              QLabel, QTableWidget, QTableWidgetItem, QDialog, 
                              QLineEdit, QFormLayout, QMessageBox, QHeaderView, QComboBox)
@@ -21,11 +22,14 @@ class UserManagement(QWidget):
         header.addWidget(QLabel("<h2>User Management</h2>"))
         
         btn_refresh = QPushButton("Refresh")
+        btn_refresh.setStyleSheet(btn_neutral())
         btn_refresh.clicked.connect(self.load_data)
-        header.addWidget(btn_refresh)
         
         btn_add = QPushButton("Create User")
+        btn_add.setStyleSheet(btn_primary())
         btn_add.clicked.connect(lambda: self.add_user_dialog(None))
+        header.addStretch()
+        header.addWidget(btn_refresh)
         header.addWidget(btn_add)
         
         layout.addLayout(header)
@@ -33,8 +37,13 @@ class UserManagement(QWidget):
         # Table
         self.table = QTableWidget()
         self.table.setColumnCount(5)
+
         self.table.setHorizontalHeaderLabels(["ID", "Username", "Role", "Employee", "Action"])
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        self.table.verticalHeader().setDefaultSectionSize(36)
+        self.table.verticalHeader().hide()
+        self.table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeMode.Fixed)
+        self.table.setColumnWidth(4, 240)
         layout.addWidget(self.table)
         
     def load_data(self):
@@ -53,19 +62,22 @@ class UserManagement(QWidget):
             
             # Action (Edit, Delete, Reset Password)
             action_widget = QWidget()
+            action_widget.setStyleSheet("background: transparent;")
             action_layout = QHBoxLayout(action_widget)
             action_layout.setContentsMargins(2, 2, 2, 2)
             
             btn_edit = QPushButton("Edit")
+            btn_edit.setStyleSheet(btn_small_edit())
             btn_edit.clicked.connect(lambda ch, x=user: self.add_user_dialog(x))
             action_layout.addWidget(btn_edit)
             
             btn_reset = QPushButton("Reset Pwd")
+            btn_reset.setStyleSheet(btn_small_neutral())
             btn_reset.clicked.connect(lambda checked, u=user: self.reset_password_dialog(u))
             action_layout.addWidget(btn_reset)
             
             btn_del = QPushButton("Delete")
-            btn_del.setStyleSheet("color: red")
+            btn_del.setStyleSheet(btn_small_delete())
             btn_del.clicked.connect(lambda ch, x=user: self.delete_user(x))
             action_layout.addWidget(btn_del)
             
@@ -117,6 +129,7 @@ class UserManagement(QWidget):
         form.addRow("Employee Link:", emp_combo)
         
         btn_save = QPushButton("Save")
+        btn_save.setStyleSheet(btn_primary())
         btn_save.clicked.connect(lambda: self.save_user(dialog, 
             user_obj,
             username_input.text(), 
@@ -176,6 +189,7 @@ class UserManagement(QWidget):
         form.addRow("New Password:", password_input)
         
         btn_save = QPushButton("Reset")
+        btn_save.setStyleSheet(btn_primary())
         btn_save.clicked.connect(lambda: self.do_reset_password(dialog, user.id, password_input.text()))
         form.addRow(btn_save)
         

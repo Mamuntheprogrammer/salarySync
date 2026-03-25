@@ -1,3 +1,4 @@
+from ui.btn_styles import btn_primary, btn_neutral, btn_danger
 from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton, 
                                QLabel, QFileDialog, QMessageBox, QTextEdit, QGroupBox, QCheckBox)
 import os
@@ -52,15 +53,18 @@ class LegacyImportModule(QWidget):
         action_layout = QHBoxLayout()
         
         self.btn_template = QPushButton("Download Template")
+        self.btn_template.setStyleSheet(btn_neutral())
         self.btn_template.clicked.connect(self.download_template)
         action_layout.addWidget(self.btn_template)
         
         self.btn_browse = QPushButton("Select File...")
+        self.btn_browse.setStyleSheet(btn_neutral())
         self.btn_browse.clicked.connect(self.browse_file)
         action_layout.addWidget(self.btn_browse)
         
         # Cancel Button (clears selection)
         self.btn_cancel = QPushButton("Clear Selection")
+        self.btn_cancel.setStyleSheet(btn_neutral())
         self.btn_cancel.clicked.connect(self.reset_state)
         action_layout.addWidget(self.btn_cancel)
         
@@ -73,7 +77,7 @@ class LegacyImportModule(QWidget):
         
         # Import Button
         self.btn_import = QPushButton("Start Import")
-        self.btn_import.setStyleSheet("background-color: #4CAF50; color: white; padding: 10px; font-weight: bold;")
+        self.btn_import.setStyleSheet(btn_primary())
         self.btn_import.setEnabled(False)
         self.btn_import.clicked.connect(self.run_import)
         layout.addWidget(self.btn_import)

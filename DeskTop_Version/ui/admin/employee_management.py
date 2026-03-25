@@ -3,9 +3,9 @@ from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
                              QLineEdit, QFormLayout, QMessageBox, QHeaderView, QComboBox, QDoubleSpinBox, QTimeEdit)
 from PyQt6.QtCore import Qt, QTime
 from database import get_db_session
-from database import get_db_session
 from models import Employee, Company, BusinessArea, Shift, Designation, DesignationSubcategory
 from services.employee_service import EmployeeService
+from ui.btn_styles import btn_toggle_active, btn_toggle_inactive, btn_small_edit, btn_small_delete, btn_primary, btn_neutral, btn_primary
 
 class EmployeeManagement(QWidget):
     def __init__(self):
@@ -22,7 +22,9 @@ class EmployeeManagement(QWidget):
         header.addWidget(QLabel("<h2>Employee Management</h2>"))
         
         btn_add = QPushButton("Add Employee")
+        btn_add.setStyleSheet(btn_primary())
         btn_add.clicked.connect(self.add_employee_dialog)
+        header.addStretch()
         header.addWidget(btn_add)
         
         layout.addLayout(header)
@@ -30,6 +32,9 @@ class EmployeeManagement(QWidget):
         # Table
         self.table = QTableWidget()
         self.table.setColumnCount(11)
+        self.table.verticalHeader().setDefaultSectionSize(36)
+        self.table.verticalHeader().hide()
+
         self.table.setHorizontalHeaderLabels(["Emp ID", "Name", "Company", "Area", "Shift", "Designation", "Salary", "Valid To", "Resign Status", "Status", "Actions"])
         
         # Make columns adjustable and add horizontal scrollbar
@@ -41,6 +46,8 @@ class EmployeeManagement(QWidget):
         # Optional: Set a minimum width for columns to avoid them being too small initially
         self.table.horizontalHeader().setMinimumSectionSize(80)
 
+        self.table.horizontalHeader().setSectionResizeMode(10, QHeaderView.ResizeMode.Fixed)
+        self.table.setColumnWidth(10, 160)
         layout.addWidget(self.table)
         
     def load_data(self):
@@ -81,20 +88,22 @@ class EmployeeManagement(QWidget):
             
             # Actions
             action_widget = QWidget()
+            action_widget.setStyleSheet("background: transparent;")
             action_layout = QHBoxLayout(action_widget)
             action_layout.setContentsMargins(2, 2, 2, 2)
             
             # Edit
             btn_edit = QPushButton("Edit")
+            btn_edit.setStyleSheet(btn_small_edit())
             btn_edit.clicked.connect(lambda ch, e=emp: self.edit_employee_dialog(e))
             action_layout.addWidget(btn_edit)
             
             # Toggle Status
             btn_toggle = QPushButton("Deactivate" if emp.is_active else "Activate")
             if emp.is_active:
-                btn_toggle.setStyleSheet("background-color: #f44336; color: white;")
+                btn_toggle.setStyleSheet(btn_toggle_inactive())
             else:
-                btn_toggle.setStyleSheet("background-color: #4CAF50; color: white;")
+                btn_toggle.setStyleSheet(btn_toggle_active())
                 
             btn_toggle.clicked.connect(lambda ch, e=emp: self.toggle_status(e))
             action_layout.addWidget(btn_toggle)
@@ -295,6 +304,7 @@ class EmployeeManagement(QWidget):
         form.addRow("Resign Date:", resign_date_input)
         
         btn_save = QPushButton("Update")
+        btn_save.setStyleSheet(btn_primary())
         btn_save.clicked.connect(lambda: self.save_edit(dialog, emp.id, {
             "full_name": name_input.text(),
             "company_id": company_combo.currentData(),
@@ -341,24 +351,14 @@ class EmployeeManagement(QWidget):
         dialog.setWindowTitle("Add Employee")
         form = QFormLayout(dialog)
         
-        # Style for dropdowns
+        # Dropdowns inherit global theme styles; only add border/radius if needed
         combo_style = """
             QComboBox {
                 padding: 5px;
-                border: 1px solid #ccc;
+                border: 1px solid #999;
                 border-radius: 3px;
-                background-color: white;
-                color: #333;
             }
-            QComboBox::drop-down {
-                border: none;
-            }
-            QComboBox QAbstractItemView {
-                background-color: white;
-                color: #333;
-                selection-background-color: #2196F3;
-                selection-color: white;
-            }
+            QComboBox::drop-down { border: none; }
         """
         
         name_input = QLineEdit()
@@ -487,6 +487,7 @@ class EmployeeManagement(QWidget):
         form.addRow("Resign Date:", resign_date_input)
         
         btn_save = QPushButton("Create Employee")
+        btn_save.setStyleSheet(btn_primary())
         btn_save.clicked.connect(lambda: self.save_employee(dialog, {
             "full_name": name_input.text(),
             "company_id": company_combo.currentData(),

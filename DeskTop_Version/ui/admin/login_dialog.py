@@ -103,6 +103,7 @@ class AdminLoginWidget(QWidget):
                 QLineEdit {
                     border: none;
                     background-color: transparent;
+                    color: #333333;
                     padding: 12px;
                     font-size: 14px;
                 }

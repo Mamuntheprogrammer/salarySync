@@ -1,8 +1,8 @@
 {
     "company_name": "My Company",
-    "time_format": "24h",
+    "time_format": "12h",
     "db_path": "E:\\attensync\\salarySync\\DeskTop_Version\\data\\attensync_v3.db",
-    "theme": "Dark",
+    "theme": "Light",
     "backup_frequency": "daily",
     "backup_location": "E:\\attensync\\salarySync\\DeskTop_Version\\backups",
     "backup": {

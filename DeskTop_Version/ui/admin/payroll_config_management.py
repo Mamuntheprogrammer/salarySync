@@ -1,7 +1,9 @@
+from ui.custom_widgets import make_input_group
 from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton, 
                              QLabel, QFormLayout, QMessageBox, QDoubleSpinBox, QCheckBox, QComboBox, QSpinBox)
 from database import get_db_session
 from models import PayrollConfig, Company
+from ui.btn_styles import btn_primary
 from config import Config
 
 class PayrollConfigManagement(QWidget):
@@ -25,7 +27,7 @@ class PayrollConfigManagement(QWidget):
         self.comp_select.currentIndexChanged.connect(self.load_config)
         
         form_layout = QFormLayout()
-        form_layout.addRow("Select Scope:", self.comp_select)
+        form_layout.addRow(make_input_group("Select Scope:", self.comp_select))
         
         # Inputs
         self.ot_rate = QDoubleSpinBox()
@@ -64,21 +66,20 @@ class PayrollConfigManagement(QWidget):
         self.days_in_month.setValue(30)
         
         # Layout
-        form_layout.addRow("Overtime Rate (x Hourly):", self.ot_rate)
-        form_layout.addRow("Holiday OT Rate (x Hourly):", self.hol_ot_rate)
-        form_layout.addRow("Late Deduction (x Hourly):", self.late_rate)
-        form_layout.addRow("Short Leave Deduction (x Hourly):", self.sl_rate)
-        form_layout.addRow("Late Days Penalty Rule:", self.late_penalty_days)
-        form_layout.addRow("Late Days Penalty Rule:", self.late_penalty_days)
-        form_layout.addRow("Calculation Mode:", self.calc_on_present)
-        form_layout.addRow("Divisor Mode:", self.use_actual_days)
-        form_layout.addRow("Days in Month Divisor:", self.days_in_month)
+        form_layout.addRow(make_input_group("Overtime Rate (x Hourly):", self.ot_rate))
+        form_layout.addRow(make_input_group("Holiday OT Rate (x Hourly):", self.hol_ot_rate))
+        form_layout.addRow(make_input_group("Late Deduction (x Hourly):", self.late_rate))
+        form_layout.addRow(make_input_group("Short Leave Deduction (x Hourly):", self.sl_rate))
+        form_layout.addRow(make_input_group("Late Days Penalty Rule:", self.late_penalty_days))
+        form_layout.addRow(make_input_group("Calculation Mode:", self.calc_on_present))
+        form_layout.addRow(make_input_group("Divisor Mode:", self.use_actual_days))
+        form_layout.addRow(make_input_group("Days in Month Divisor:", self.days_in_month))
         
         layout.addLayout(form_layout)
         
         # Save Btn
         btn_save = QPushButton("Save Configuration")
-        btn_save.setStyleSheet("background-color: #4CAF50; color: white; padding: 10px;")
+        btn_save.setStyleSheet(btn_primary())
         btn_save.clicked.connect(self.save_config)
         layout.addWidget(btn_save)
         

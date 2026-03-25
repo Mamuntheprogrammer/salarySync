@@ -1,3 +1,5 @@
+from ui.custom_widgets import make_input_group
+from ui.btn_styles import btn_primary, btn_neutral, btn_danger
 from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton, 
                              QLabel, QComboBox, QLineEdit, QFileDialog, QCheckBox, 
                              QGroupBox, QMessageBox)
@@ -22,7 +24,7 @@ class BackupSettings(QWidget):
         manual_layout = QVBoxLayout()
         
         btn_manual = QPushButton("Backup Database Now")
-        btn_manual.setStyleSheet("background-color: #2196F3; color: white; padding: 8px;")
+        btn_manual.setStyleSheet(btn_primary())
         btn_manual.clicked.connect(self.trigger_manual_backup)
         manual_layout.addWidget(QLabel("Create an immediate copy of your database."))
         manual_layout.addWidget(btn_manual)
@@ -54,6 +56,7 @@ class BackupSettings(QWidget):
         loc_layout.addWidget(self.txt_location)
         
         btn_browse = QPushButton("Browse...")
+        btn_browse.setStyleSheet(btn_neutral())
         btn_browse.clicked.connect(self.browse_location)
         loc_layout.addWidget(btn_browse)
         
@@ -61,6 +64,7 @@ class BackupSettings(QWidget):
         
         # Save Button
         btn_save = QPushButton("Save Settings")
+        btn_save.setStyleSheet(btn_primary())
         btn_save.clicked.connect(self.save_settings)
         auto_layout.addWidget(btn_save)
         

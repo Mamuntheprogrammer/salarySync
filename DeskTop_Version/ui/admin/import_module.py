@@ -1,3 +1,4 @@
+from ui.btn_styles import btn_primary, btn_neutral, btn_danger
 from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton, 
                              QLabel, QFileDialog, QCheckBox, QGroupBox, 
                              QScrollArea, QMessageBox, QProgressBar, QTextEdit)
@@ -26,6 +27,7 @@ class ImportModule(QWidget):
         tpl_layout = QHBoxLayout()
         
         btn_tpl = QPushButton("Download Template")
+        btn_tpl.setStyleSheet(btn_neutral())
         btn_tpl.setToolTip("Generates Excel template with 10 rows of sample data")
         btn_tpl.clicked.connect(self.download_template)
         
@@ -39,11 +41,12 @@ class ImportModule(QWidget):
         sel_layout = QHBoxLayout()
         self.lbl_file = QLabel("No file selected")
         btn_browse = QPushButton("Browse...")
+        btn_browse.setStyleSheet(btn_neutral())
         btn_browse.clicked.connect(self.browse_file)
         
         btn_clear = QPushButton("X")
         btn_clear.setFixedWidth(30)
-        btn_clear.setStyleSheet("background-color: #f44336; color: white; font-weight: bold;")
+        btn_clear.setStyleSheet(btn_danger())
         btn_clear.clicked.connect(self.clear_file)
         
         sel_layout.addWidget(btn_browse)
@@ -75,7 +78,7 @@ class ImportModule(QWidget):
         # 4. Import Action
         act_layout = QHBoxLayout()
         self.btn_import = QPushButton("Import Data")
-        self.btn_import.setStyleSheet("background-color: #4CAF50; color: white; padding: 10px; font-weight: bold;")
+        self.btn_import.setStyleSheet(btn_primary())
         self.btn_import.setEnabled(False)
         self.btn_import.clicked.connect(self.run_import)
         act_layout.addWidget(self.btn_import)

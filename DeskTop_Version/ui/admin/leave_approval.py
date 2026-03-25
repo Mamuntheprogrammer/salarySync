@@ -7,6 +7,7 @@ from models import LeaveRequest, ShortLeave, Employee
 from services.leave_service import LeaveService
 from datetime import datetime
 from config import Config
+from ui.btn_styles import btn_primary, btn_small_approve, btn_small_reject, btn_small_neutral, btn_neutral
 
 class LeaveApproval(QWidget):
     def __init__(self):
@@ -22,9 +23,10 @@ class LeaveApproval(QWidget):
         # Tools
         tools = QHBoxLayout()
         btn_refresh = QPushButton("Refresh")
+        btn_refresh.setStyleSheet(btn_neutral())
         btn_refresh.clicked.connect(self.load_data)
-        tools.addWidget(btn_refresh)
         tools.addStretch()
+        tools.addWidget(btn_refresh)
         layout.addLayout(tools)
         
         # Tabs
@@ -43,10 +45,13 @@ class LeaveApproval(QWidget):
         
         self.full_table = QTableWidget()
         self.full_table.setColumnCount(7)
+
         self.full_table.setHorizontalHeaderLabels([
             "ID", "Employee", "Type", "Start", "End", "Reason", "Actions"
         ])
         self.full_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        self.full_table.verticalHeader().setDefaultSectionSize(36)
+        self.full_table.verticalHeader().hide()
         layout.addWidget(self.full_table)
         
         return widget
@@ -57,10 +62,13 @@ class LeaveApproval(QWidget):
         
         self.short_table = QTableWidget()
         self.short_table.setColumnCount(7)
+
         self.short_table.setHorizontalHeaderLabels([
             "ID", "Employee", "Date", "Start", "End", "Reason", "Actions"
         ])
         self.short_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        self.short_table.verticalHeader().setDefaultSectionSize(36)
+        self.short_table.verticalHeader().hide()
         layout.addWidget(self.short_table)
         
         return widget
@@ -86,12 +94,12 @@ class LeaveApproval(QWidget):
             actions = QWidget()
             h = QHBoxLayout(actions)
             h.setContentsMargins(0,0,0,0)
-            btn_app = QPushButton("✓")
-            btn_app.setStyleSheet("color: green; font-weight: bold;")
+            btn_app = QPushButton("Approve")
+            btn_app.setStyleSheet(btn_small_approve())
             btn_app.clicked.connect(lambda ch, r=req: self.approve_full(r))
             
-            btn_rej = QPushButton("✗")
-            btn_rej.setStyleSheet("color: red; font-weight: bold;")
+            btn_rej = QPushButton("Reject")
+            btn_rej.setStyleSheet(btn_small_reject())
             btn_rej.clicked.connect(lambda ch, r=req: self.reject_full(r))
             
             h.addWidget(btn_app)
@@ -121,12 +129,12 @@ class LeaveApproval(QWidget):
             actions = QWidget()
             h = QHBoxLayout(actions)
             h.setContentsMargins(0,0,0,0)
-            btn_app = QPushButton("✓")
-            btn_app.setStyleSheet("color: green; font-weight: bold;")
+            btn_app = QPushButton("Approve")
+            btn_app.setStyleSheet(btn_small_approve())
             btn_app.clicked.connect(lambda ch, r=req: self.approve_short(r))
             
-            btn_rej = QPushButton("✗")
-            btn_rej.setStyleSheet("color: red; font-weight: bold;")
+            btn_rej = QPushButton("Reject")
+            btn_rej.setStyleSheet(btn_small_reject())
             btn_rej.clicked.connect(lambda ch, r=req: self.reject_short(r))
             
             h.addWidget(btn_app)

@@ -1,0 +1,176 @@
+
+--- attendance_maintenance.py ---
+                action_widget = QWidget()
+                action_layout = QHBoxLayout(action_widget)
+                action_layout.setContentsMargins(2, 2, 2, 2)
+
+                btn_edit = QPushButton("Edit")
+                btn_edit.clicked.connect(lambda checked, r=rec: self.edit_record(r))
+                action_layout.addWidget(btn_edit)
+
+                btn_del = QPushButton("Delete")
+                btn_del.setStyleSheet("color: red")
+                btn_del.clicked.connect(lambda ch, x=rec: self.delete_record(x))
+                action_layout.addWidget(btn_del)
+
+
+--- bonus_management.py ---
+            action_widget = QWidget()
+            action_widget.setStyleSheet("background: transparent;")
+            action_layout = QHBoxLayout(action_widget)
+            action_layout.setContentsMargins(2, 2, 2, 2)
+
+            btn_edit = QPushButton("Edit")
+            btn_edit.clicked.connect(lambda ch, x=b: self.add_dialog(x))
+            action_layout.addWidget(btn_edit)
+
+            btn_delete = QPushButton("Delete")
+            btn_delete.setStyleSheet(btn_small_delete())
+            btn_delete.clicked.connect(lambda ch, x=b: self.delete_bonus(x))
+            action_layout.addWidget(btn_delete)
+
+
+--- calendar_management.py ---
+            action_widget = QWidget()
+            action_widget.setStyleSheet("background: transparent;")
+            action_layout = QHBoxLayout(action_widget)
+            action_layout.setContentsMargins(0, 0, 0, 0)
+
+            btn_edit = QPushButton("Edit")
+            btn_edit.clicked.connect(lambda ch, x=h: self.add_holiday_dialog(holiday_obj=x))
+            action_layout.addWidget(btn_edit)
+
+            btn_del = QPushButton("Delete")
+            btn_del.setStyleSheet(btn_small_delete())
+            btn_del.clicked.connect(lambda ch, x=h: self.delete_holiday(x))
+            action_layout.addWidget(btn_del)
+
+
+--- company_management.py ---
+            action_widget = QWidget()
+            action_widget.setStyleSheet("background: transparent;")
+            action_layout = QHBoxLayout(action_widget)
+            action_layout.setContentsMargins(2, 2, 2, 2)
+
+            btn_manage = QPushButton("Areas")
+            btn_manage.setStyleSheet(btn_primary())
+            btn_manage.clicked.connect(lambda checked, c=comp: self.manage_areas_dialog(c))
+            action_layout.addWidget(btn_manage)
+
+            btn_edit = QPushButton("Edit")
+            btn_edit.setStyleSheet(btn_small_edit())
+            btn_edit.clicked.connect(lambda ch, x=comp: self.add_company_dialog(x))
+            action_layout.addWidget(btn_edit)
+
+            btn_del = QPushButton("Delete")
+            btn_del.setStyleSheet(btn_small_delete())
+            btn_del.clicked.connect(lambda ch, x=comp: self.delete_company(x))
+            action_layout.addWidget(btn_del)
+
+
+--- designation_management.py ---
+            action_widget = QWidget()
+            action_widget.setStyleSheet("background: transparent;")
+            action_layout = QHBoxLayout(action_widget)
+            action_layout.setContentsMargins(0, 0, 0, 0)
+
+            btn_edit = QPushButton("E")
+            btn_edit.setStyleSheet(btn_small_edit())
+            btn_edit.clicked.connect(lambda ch, x=deg: self.add_designation_dialog(x))
+            action_layout.addWidget(btn_edit)
+
+            btn_del = QPushButton("X")
+            btn_del.setFixedWidth(30)
+            btn_del.setStyleSheet(btn_small_delete())
+            btn_del.clicked.connect(lambda ch, x=deg: self.delete_designation(x))
+            action_layout.addWidget(btn_del)
+
+
+--- employee_management.py ---
+            action_widget = QWidget()
+            action_widget.setStyleSheet("background: transparent;")
+            action_layout = QHBoxLayout(action_widget)
+            action_layout.setContentsMargins(2, 2, 2, 2)
+
+            # Edit
+            btn_edit = QPushButton("Edit")
+            btn_edit.clicked.connect(lambda ch, e=emp: self.edit_employee_dialog(e))
+            action_layout.addWidget(btn_edit)
+
+            # Toggle Status
+            btn_toggle = QPushButton("Deactivate" if emp.is_active else "Activate")
+            if emp.is_active:
+                btn_toggle.setStyleSheet(btn_toggle_inactive())
+            else:
+                btn_toggle.setStyleSheet(btn_toggle_active())
+
+            btn_toggle.clicked.connect(lambda ch, e=emp: self.toggle_status(e))
+            action_layout.addWidget(btn_toggle)
+
+
+--- leave_quota_management.py ---
+            action_widget = QWidget()
+            action_widget.setStyleSheet("background: transparent;")
+            action_layout = QHBoxLayout(action_widget)
+            action_layout.setContentsMargins(2, 2, 2, 2)
+
+            btn_edit = QPushButton("Edit")
+            btn_edit.clicked.connect(lambda ch, x=q: self.add_quota_dialog(x))
+            action_layout.addWidget(btn_edit)
+
+            btn_delete = QPushButton("Delete")
+            btn_delete.setStyleSheet(btn_small_delete())
+            btn_delete.clicked.connect(lambda ch, x=q: self.delete_quota(x))
+            action_layout.addWidget(btn_delete)
+
+
+--- salary_breakdown_manager.py ---
+            action_widget = QWidget()
+            action_widget.setStyleSheet("background: transparent;")
+            action_layout = QHBoxLayout(action_widget)
+            action_layout.setContentsMargins(2, 2, 2, 2)
+
+            btn_edit = QPushButton("Edit")
+            btn_edit.clicked.connect(lambda ch, x=b: self.add_dialog(x))
+            action_layout.addWidget(btn_edit)
+
+            btn_delete = QPushButton("Delete")
+            btn_delete.setStyleSheet("background-color: #f44336; color: white;")
+            btn_delete.clicked.connect(lambda ch, x=b: self.delete_breakdown(x))
+            action_layout.addWidget(btn_delete)
+
+
+--- short_leave_management.py ---
+            action_widget = QWidget()
+            action_widget.setStyleSheet("background: transparent;")
+            action_layout = QHBoxLayout(action_widget)
+            action_layout.setContentsMargins(2, 2, 2, 2)
+
+            btn_edit = QPushButton("Edit")
+            btn_edit.clicked.connect(lambda ch, x=l: self.add_dialog(x))
+            action_layout.addWidget(btn_edit)
+
+            btn_delete = QPushButton("Delete")
+            btn_delete.setStyleSheet("background-color: #f44336; color: white;")
+            btn_delete.clicked.connect(lambda ch, x=l: self.delete_leave(x))
+            action_layout.addWidget(btn_delete)
+
+
+--- user_management.py ---
+            action_widget = QWidget()
+            action_widget.setStyleSheet("background: transparent;")
+            action_layout = QHBoxLayout(action_widget)
+            action_layout.setContentsMargins(2, 2, 2, 2)
+
+            btn_edit = QPushButton("Edit")
+            btn_edit.clicked.connect(lambda ch, x=user: self.add_user_dialog(x))
+            action_layout.addWidget(btn_edit)
+
+            btn_reset = QPushButton("Reset Pwd")
+            btn_reset.clicked.connect(lambda checked, u=user: self.reset_password_dialog(u))
+            action_layout.addWidget(btn_reset)
+
+            btn_del = QPushButton("Delete")
+            btn_del.setStyleSheet("color: red")
+            btn_del.clicked.connect(lambda ch, x=user: self.delete_user(x))
+            action_layout.addWidget(btn_del)

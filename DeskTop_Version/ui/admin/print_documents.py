@@ -1,5 +1,7 @@
+from ui.custom_widgets import make_input_group
 from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton, 
                              QLabel, QComboBox, QLineEdit, QMessageBox, QGroupBox, QFormLayout, QFileDialog)
+from ui.btn_styles import btn_primary
 from PyQt6.QtCore import Qt
 from database import get_db_session
 from models import Employee, PayrollRecord, BonusRecord
@@ -25,23 +27,23 @@ class PrintDocumentsModule(QWidget):
         
         self.doc_type_combo = QComboBox()
         self.doc_type_combo.addItems(["Payslip", "Bonus Statement"])
-        form.addRow("Document Type:", self.doc_type_combo)
+        form.addRow(make_input_group("Document Type:", self.doc_type_combo))
 
         self.emp_code_input = QLineEdit()
         self.emp_code_input.setPlaceholderText("Enter Employee ID")
-        form.addRow("Employee ID:", self.emp_code_input)
+        form.addRow(make_input_group("Employee ID:", self.emp_code_input))
         
         self.year_input = QLineEdit()
         self.year_input.setPlaceholderText("YYYY (e.g. 2026)")
-        form.addRow("Year:", self.year_input)
+        form.addRow(make_input_group("Year:", self.year_input))
         
         self.month_input = QLineEdit()
         self.month_input.setPlaceholderText("MM (e.g. 02)")
-        form.addRow("Month:", self.month_input)
+        form.addRow(make_input_group("Month:", self.month_input))
         
         btn_generate = QPushButton("Generate PDF")
+        btn_generate.setStyleSheet(btn_primary())
         btn_generate.clicked.connect(self.generate_document)
-        btn_generate.setStyleSheet("background-color: #2196F3; color: white; padding: 10px; font-weight: bold;")
         form.addRow(btn_generate)
         
         search_box.setLayout(form)

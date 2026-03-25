@@ -3,6 +3,7 @@ from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
                              QLineEdit, QFormLayout, QMessageBox, QHeaderView)
 from database import get_db_session
 from models import Company, BusinessArea
+from ui.btn_styles import btn_small_edit, btn_small_delete, btn_primary, btn_neutral, btn_primary
 
 class CompanyManagement(QWidget):
     def __init__(self):
@@ -19,11 +20,14 @@ class CompanyManagement(QWidget):
         header.addWidget(QLabel("<h2>Company Management</h2>"))
         
         btn_refresh = QPushButton("Refresh")
+        btn_refresh.setStyleSheet(btn_neutral())
         btn_refresh.clicked.connect(self.load_data)
-        header.addWidget(btn_refresh)
         
         btn_add = QPushButton("Add Company")
+        btn_add.setStyleSheet(btn_primary())
         btn_add.clicked.connect(lambda: self.add_company_dialog(None))
+        header.addStretch()
+        header.addWidget(btn_refresh)
         header.addWidget(btn_add)
         
         layout.addLayout(header)
@@ -31,8 +35,13 @@ class CompanyManagement(QWidget):
         # Table
         self.table = QTableWidget()
         self.table.setColumnCount(5)
+
         self.table.setHorizontalHeaderLabels(["ID", "Code", "Name", "Business Areas", "Action"])
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        self.table.verticalHeader().setDefaultSectionSize(36)
+        self.table.verticalHeader().hide()
+        self.table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeMode.Fixed)
+        self.table.setColumnWidth(4, 160)
         layout.addWidget(self.table)
         
     def load_data(self):
@@ -51,19 +60,22 @@ class CompanyManagement(QWidget):
             
             # Actions
             action_widget = QWidget()
+            action_widget.setStyleSheet("background: transparent;")
             action_layout = QHBoxLayout(action_widget)
             action_layout.setContentsMargins(2, 2, 2, 2)
             
             btn_manage = QPushButton("Areas")
+            btn_manage.setStyleSheet(btn_primary())
             btn_manage.clicked.connect(lambda checked, c=comp: self.manage_areas_dialog(c))
             action_layout.addWidget(btn_manage)
-            
+
             btn_edit = QPushButton("Edit")
+            btn_edit.setStyleSheet(btn_small_edit())
             btn_edit.clicked.connect(lambda ch, x=comp: self.add_company_dialog(x))
             action_layout.addWidget(btn_edit)
-            
+
             btn_del = QPushButton("Delete")
-            btn_del.setStyleSheet("color: red")
+            btn_del.setStyleSheet(btn_small_delete())
             btn_del.clicked.connect(lambda ch, x=comp: self.delete_company(x))
             action_layout.addWidget(btn_del)
             
@@ -97,6 +109,7 @@ class CompanyManagement(QWidget):
         form.addRow("Company Name:", name_input)
         
         btn_save = QPushButton("Save")
+        btn_save.setStyleSheet(btn_primary())
         btn_save.clicked.connect(lambda: self.save_company(dialog, company_obj, code_input.text(), name_input.text()))
         form.addRow(btn_save)
         
@@ -157,6 +170,7 @@ class CompanyManagement(QWidget):
         # So this form stays as "Add New".
         
         btn_add = QPushButton("Add")
+        btn_add.setStyleSheet(btn_primary())
         btn_add.clicked.connect(lambda: self.save_business_area(dialog, None, company.id, code_input.text(), name_input.text()))
         
         form_layout.addWidget(code_input)
@@ -167,8 +181,11 @@ class CompanyManagement(QWidget):
         # List Existing Areas
         self.ba_table = QTableWidget()
         self.ba_table.setColumnCount(3) # Added Action
+
         self.ba_table.setHorizontalHeaderLabels(["Code", "Name", "Action"])
         self.ba_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        self.ba_table.verticalHeader().setDefaultSectionSize(36)
+        self.ba_table.verticalHeader().hide()
         layout.addWidget(self.ba_table)
         
         # Load Data
@@ -189,6 +206,7 @@ class CompanyManagement(QWidget):
             
             # Actions
             action_widget = QWidget()
+            action_widget.setStyleSheet("background: transparent;")
             action_layout = QHBoxLayout(action_widget)
             action_layout.setContentsMargins(0, 0, 0, 0)
             

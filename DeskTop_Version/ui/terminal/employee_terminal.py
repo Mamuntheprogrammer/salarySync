@@ -1,6 +1,7 @@
 from PyQt6.QtWidgets import (QComboBox, QDateEdit, QDialog, QFormLayout, QGridLayout, QGroupBox, QHBoxLayout, 
                              QInputDialog, QLabel, QLineEdit, QMessageBox, QPushButton, QTabWidget, QTimeEdit, 
                              QVBoxLayout, QWidget, QFrame)
+from ui.btn_styles import btn_primary, btn_neutral, btn_danger
 from PyQt6.QtCore import Qt, QTimer, QTime, QDate
 from PyQt6.QtGui import QFont, QImage, QPixmap
 from services.attendance_service import AttendanceService
@@ -58,8 +59,7 @@ class EmployeeTerminal(QWidget):
             QFrame {
                 border: 1px solid #ddd;
                 border-radius: 8px;
-                background-color: #ffffff;
-            }
+                }
         """)
         camera_layout = QVBoxLayout(camera_container)
         camera_layout.setContentsMargins(20, 20, 20, 20)
@@ -108,9 +108,8 @@ class EmployeeTerminal(QWidget):
         keypad_container = QFrame()
         keypad_container.setStyleSheet("""
             QFrame {
-                border: 1px solid #ddd;
+                border: 1px solid #555;
                 border-radius: 8px;
-                background-color: #ffffff;
             }
         """)
         layout = QVBoxLayout(keypad_container)
@@ -128,9 +127,8 @@ class EmployeeTerminal(QWidget):
         input_container = QFrame()
         input_container.setStyleSheet("""
             QFrame {
-                border: 2px solid #ccc;
+                border: 2px solid #555;
                 border-radius: 5px;
-                background-color: white;
             }
         """)
         input_layout = QHBoxLayout(input_container)
@@ -150,6 +148,7 @@ class EmployeeTerminal(QWidget):
         
         # Toggle Button
         self.toggle_btn = QPushButton("👁")
+        self.toggle_btn.setStyleSheet(btn_primary())
         self.toggle_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.toggle_btn.setFixedWidth(60) 
         self.toggle_btn.setFont(QFont("Arial", 20))
@@ -193,11 +192,11 @@ class EmployeeTerminal(QWidget):
         
         for text, row, col in buttons:
             btn = QPushButton(text)
-            btn.setFont(QFont("Arial", 14))
-            btn.setMinimumSize(60, 46)
+            btn.setFont(QFont("Arial", 16, QFont.Weight.Bold))
+            btn.setMinimumSize(60, 52)
             btn.setSizePolicy(btn.sizePolicy().horizontalPolicy(), btn.sizePolicy().verticalPolicy())
             btn.setStyleSheet("""
-                QPushButton { border: 1px solid #ddd; border-radius: 4px; background-color: #f9f9f9; }
+                QPushButton { border: 1px solid #ddd; border-radius: 4px; background-color: #f9f9f9; color: #333333; }
                 QPushButton:hover { background-color: #eeeeee; }
                 QPushButton:pressed { background-color: #dddddd; }
             """)
@@ -210,11 +209,11 @@ class EmployeeTerminal(QWidget):
         action_layout = QHBoxLayout()
         
         self.btn_in = QPushButton("Clock IN")
-        self.btn_in.setStyleSheet("background-color: #4CAF50; color: white; padding: 15px; font-size: 14px;")
+        self.btn_in.setStyleSheet(btn_primary())
         self.btn_in.clicked.connect(self.action_clock_in)
         
         self.btn_out = QPushButton("Clock OUT")
-        self.btn_out.setStyleSheet("background-color: #f44336; color: white; padding: 15px; font-size: 14px;")
+        self.btn_out.setStyleSheet(btn_danger())
         self.btn_out.clicked.connect(self.action_clock_out)
         
         action_layout.addWidget(self.btn_in)
@@ -223,7 +222,7 @@ class EmployeeTerminal(QWidget):
         
         # Short Leave Button
         self.btn_leave = QPushButton("Manage Leave")
-        self.btn_leave.setStyleSheet("background-color: #2196F3; color: white; padding: 10px; font-size: 12px;")
+        self.btn_leave.setStyleSheet(btn_primary())
         self.btn_leave.clicked.connect(self.open_leave_management)
         layout.addWidget(self.btn_leave)
         
@@ -458,7 +457,8 @@ class EmployeeTerminal(QWidget):
 
             # Act on user choice
             if popup.action == "done":
-                self.btn_toggle_cam.click()  # same as user pressing "Turn Off Camera"
+                if was_running:
+                    self.btn_toggle_cam.click()  # same as user pressing "Turn Off Camera"
             elif was_running:
                 # Continue — resume live feed
                 self.video_label.clear()

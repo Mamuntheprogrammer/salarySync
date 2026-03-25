@@ -1,3 +1,5 @@
+from ui.custom_widgets import make_input_group
+from ui.btn_styles import btn_primary, btn_neutral, btn_danger
 from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton, 
                              QLabel, QTableWidget, QTableWidgetItem, QDateEdit, 
                              QHeaderView, QComboBox, QMessageBox, QFileDialog, QTabWidget)
@@ -98,14 +100,17 @@ class InternalReportWidget(QWidget):
         self.load_bas()
         
         btn_generate = QPushButton("Generate")
+        btn_generate.setStyleSheet(btn_primary())
         btn_generate.clicked.connect(self.generate_report)
         self.header_layout.addWidget(btn_generate)
         
         btn_export = QPushButton("Export CSV")
+        btn_export.setStyleSheet(btn_neutral())
         btn_export.clicked.connect(self.export_csv)
         self.header_layout.addWidget(btn_export)
         
         btn_reset = QPushButton("Reset Filters")
+        btn_reset.setStyleSheet(btn_neutral())
         btn_reset.clicked.connect(self.reset_filters)
         self.header_layout.addWidget(btn_reset)
         

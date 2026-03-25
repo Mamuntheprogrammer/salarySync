@@ -1,3 +1,4 @@
+from ui.btn_styles import btn_small_edit, btn_small_delete, btn_small_neutral, btn_primary, btn_neutral
 from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton, 
                              QLabel, QTableWidget, QTableWidgetItem, QDialog, 
                              QFormLayout, QMessageBox, QHeaderView, QComboBox, 
@@ -21,11 +22,14 @@ class SalaryBreakdownManager(QWidget):
         header.addWidget(QLabel("<h2>Salary Breakdown Manager</h2>"))
         
         btn_refresh = QPushButton("Refresh")
+        btn_refresh.setStyleSheet(btn_neutral())
         btn_refresh.clicked.connect(self.load_data)
-        header.addWidget(btn_refresh)
         
         btn_add = QPushButton("Add Breakdown")
+        btn_add.setStyleSheet(btn_primary())
         btn_add.clicked.connect(lambda: self.add_dialog(None))
+        header.addStretch()
+        header.addWidget(btn_refresh)
         header.addWidget(btn_add)
         
         layout.addLayout(header)
@@ -33,13 +37,17 @@ class SalaryBreakdownManager(QWidget):
         # Table
         self.table = QTableWidget()
         self.table.setColumnCount(11) # Employee, Year, ValidTo, Basic, HRA, Conveyance, Med, Mobile, Trans, Other, Actions
+        self.table.verticalHeader().setDefaultSectionSize(36)
+        self.table.verticalHeader().hide()
+
         self.table.setHorizontalHeaderLabels([
             "Employee", "Year", "Valid To", "Basic", "HRA", 
             "Conveyance", "Medical", "Mobile", "Transportation", 
             "Other", "Actions"
         ])
-        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
+
         self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
+        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
         layout.addWidget(self.table)
         
     def load_data(self):
@@ -67,15 +75,17 @@ class SalaryBreakdownManager(QWidget):
             
             # Actions
             action_widget = QWidget()
+            action_widget.setStyleSheet("background: transparent;")
             action_layout = QHBoxLayout(action_widget)
             action_layout.setContentsMargins(2, 2, 2, 2)
             
             btn_edit = QPushButton("Edit")
+            btn_edit.setStyleSheet(btn_small_edit())
             btn_edit.clicked.connect(lambda ch, x=b: self.add_dialog(x))
             action_layout.addWidget(btn_edit)
             
             btn_delete = QPushButton("Delete")
-            btn_delete.setStyleSheet("background-color: #f44336; color: white;")
+            btn_delete.setStyleSheet(btn_small_delete())
             btn_delete.clicked.connect(lambda ch, x=b: self.delete_breakdown(x))
             action_layout.addWidget(btn_delete)
             
@@ -165,6 +175,7 @@ class SalaryBreakdownManager(QWidget):
         form.addRow("Total Summary:", total_lbl)
         
         btn_save = QPushButton("Save")
+        btn_save.setStyleSheet(btn_primary())
         btn_save.clicked.connect(lambda: self.save_breakdown(dialog, obj, {
             "employee_id": emp_combo.currentData(),
             "year": year_spin.value(),

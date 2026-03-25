@@ -4,6 +4,7 @@ from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
 from PyQt6.QtCore import Qt
 from database import get_db_session
 from models import Designation, DesignationSubcategory
+from ui.btn_styles import btn_primary, btn_neutral, btn_small_edit, btn_small_delete
 
 class DesignationManagement(QWidget):
     def __init__(self):
@@ -16,29 +17,25 @@ class DesignationManagement(QWidget):
         self.setLayout(layout)
         
         # --- Top Header ---
-        header_widget = QWidget()
-        header_widget.setStyleSheet("background-color: #333; border-radius: 5px;")
-        header_widget.setFixedHeight(60) # Force compact height
-        header_layout = QHBoxLayout(header_widget)
-        header_layout.setContentsMargins(15, 0, 15, 0) # Remove vertical padding
-        
+        header_layout = QHBoxLayout()
+
         lbl_title = QLabel("Designation & Levels")
-        lbl_title.setStyleSheet("color: white; border: none; font-size: 18px; font-weight: bold;")
-        
+        lbl_title.setStyleSheet("font-size: 18px; font-weight: bold;")
+
         btn_refresh = QPushButton("Refresh")
-        btn_refresh.setStyleSheet("background-color: #555; color: white; padding: 5px 15px;")
-        btn_refresh.clicked.connect(self.load_designations) # This will also clear subcat view, which is fine
-        
+        btn_refresh.setStyleSheet(btn_neutral())
+        btn_refresh.clicked.connect(self.load_designations)
+
         btn_add_d = QPushButton("+ Add Designation")
-        btn_add_d.setStyleSheet("background-color: #4CAF50; color: white; padding: 5px 15px; font-weight: bold;")
+        btn_add_d.setStyleSheet(btn_primary())
         btn_add_d.clicked.connect(lambda: self.add_designation_dialog(None))
-        
+
         header_layout.addWidget(lbl_title)
         header_layout.addStretch()
         header_layout.addWidget(btn_refresh)
         header_layout.addWidget(btn_add_d)
-        
-        layout.addWidget(header_widget)
+
+        layout.addLayout(header_layout)
         
         # Splitter for Designations (Left) and Subcategories (Right)
         splitter = QSplitter(Qt.Orientation.Horizontal)
@@ -53,11 +50,16 @@ class DesignationManagement(QWidget):
         
         self.table_deg = QTableWidget()
         self.table_deg.setColumnCount(3)
+
         self.table_deg.setHorizontalHeaderLabels(["ID", "Name", "Action"])
         self.table_deg.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        self.table_deg.verticalHeader().setDefaultSectionSize(36)
+        self.table_deg.verticalHeader().hide()
         self.table_deg.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table_deg.verticalHeader().setVisible(False)
         self.table_deg.itemSelectionChanged.connect(self.on_designation_selected)
+        self.table_deg.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Fixed)
+        self.table_deg.setColumnWidth(2, 160)
         left_layout.addWidget(self.table_deg)
         
         splitter.addWidget(left_group)
@@ -78,9 +80,14 @@ class DesignationManagement(QWidget):
         
         self.table_sub = QTableWidget()
         self.table_sub.setColumnCount(3)
+
         self.table_sub.setHorizontalHeaderLabels(["ID", "Name", "Action"])
         self.table_sub.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        self.table_sub.verticalHeader().setDefaultSectionSize(36)
+        self.table_sub.verticalHeader().hide()
         self.table_sub.verticalHeader().setVisible(False)
+        self.table_sub.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Fixed)
+        self.table_sub.setColumnWidth(2, 160)
         right_layout.addWidget(self.table_sub)
         
         splitter.addWidget(self.right_group)
@@ -103,17 +110,18 @@ class DesignationManagement(QWidget):
             
             # Action
             action_widget = QWidget()
+            action_widget.setStyleSheet("background: transparent;")
             action_layout = QHBoxLayout(action_widget)
             action_layout.setContentsMargins(0, 0, 0, 0)
             
             btn_edit = QPushButton("E")
-            btn_edit.setFixedWidth(30)
+            btn_edit.setStyleSheet(btn_small_edit())
             btn_edit.clicked.connect(lambda ch, x=deg: self.add_designation_dialog(x))
             action_layout.addWidget(btn_edit)
             
             btn_del = QPushButton("X")
             btn_del.setFixedWidth(30)
-            btn_del.setStyleSheet("color: red")
+            btn_del.setStyleSheet(btn_small_delete())
             btn_del.clicked.connect(lambda ch, x=deg: self.delete_designation(x))
             action_layout.addWidget(btn_del)
             
@@ -158,17 +166,18 @@ class DesignationManagement(QWidget):
             
             # Action
             action_widget = QWidget()
+            action_widget.setStyleSheet("background: transparent;")
             action_layout = QHBoxLayout(action_widget)
             action_layout.setContentsMargins(0, 0, 0, 0)
             
             btn_edit = QPushButton("E")
-            btn_edit.setFixedWidth(30)
+            btn_edit.setStyleSheet(btn_small_edit())
             btn_edit.clicked.connect(lambda ch, x=sub: self.add_subcategory_dialog(x))
             action_layout.addWidget(btn_edit)
             
             btn_del = QPushButton("X")
             btn_del.setFixedWidth(30)
-            btn_del.setStyleSheet("color: red")
+            btn_del.setStyleSheet(btn_small_delete())
             btn_del.clicked.connect(lambda ch, x=sub: self.delete_subcategory(x))
             action_layout.addWidget(btn_del)
             
@@ -195,6 +204,7 @@ class DesignationManagement(QWidget):
         form.addRow("Name:", name_input)
         
         btn_save = QPushButton("Save")
+        btn_save.setStyleSheet(btn_primary())
         btn_save.clicked.connect(lambda: self.save_designation(dialog, deg_obj, name_input.text()))
         form.addRow(btn_save)
         
@@ -237,6 +247,7 @@ class DesignationManagement(QWidget):
         form.addRow("Name:", name_input)
         
         btn_save = QPushButton("Save")
+        btn_save.setStyleSheet(btn_primary())
         btn_save.clicked.connect(lambda: self.save_subcategory(dialog, sub_obj, deg_id, name_input.text()))
         form.addRow(btn_save)
         

@@ -1,3 +1,4 @@
+from ui.btn_styles import btn_primary, btn_neutral, btn_danger
 from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLineEdit, 
                              QPushButton, QLabel, QComboBox, QMessageBox, QFrame, QGridLayout)
 from PyQt6.QtCore import Qt, QTimer
@@ -100,11 +101,11 @@ class AdminTerminal(QWidget):
         action_layout = QHBoxLayout()
         
         self.btn_in = QPushButton("Clock IN")
-        self.btn_in.setStyleSheet("background-color: #4CAF50; color: white; padding: 15px; font-size: 14px;")
+        self.btn_in.setStyleSheet(btn_primary())
         self.btn_in.clicked.connect(self.action_clock_in)
         
         self.btn_out = QPushButton("Clock OUT")
-        self.btn_out.setStyleSheet("background-color: #f44336; color: white; padding: 15px; font-size: 14px;")
+        self.btn_out.setStyleSheet(btn_danger())
         self.btn_out.clicked.connect(self.action_clock_out)
         
         action_layout.addWidget(self.btn_in)
@@ -113,7 +114,7 @@ class AdminTerminal(QWidget):
         
         # Short Leave Button
         self.btn_leave = QPushButton("Leave Request")
-        self.btn_leave.setStyleSheet("background-color: #2196F3; color: white; padding: 10px; font-size: 12px;")
+        self.btn_leave.setStyleSheet(btn_primary())
         self.btn_leave.clicked.connect(self.action_leave_request)
         layout.addWidget(self.btn_leave)
         

@@ -1,3 +1,4 @@
+from ui.btn_styles import btn_small_delete, btn_primary, btn_small_edit, btn_neutral
 from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton, 
                              QLabel, QTableWidget, QTableWidgetItem, QDialog, 
                              QLineEdit, QFormLayout, QMessageBox, QHeaderView, QComboBox, QDoubleSpinBox, QSpinBox)
@@ -21,11 +22,14 @@ class LeaveQuotaManagement(QWidget):
         header.addWidget(QLabel("<h2>Leave Manager</h2>"))
         
         btn_refresh = QPushButton("Refresh")
+        btn_refresh.setStyleSheet(btn_neutral())
         btn_refresh.clicked.connect(self.load_data)
-        header.addWidget(btn_refresh)
         
         btn_add = QPushButton("Add Quota")
+        btn_add.setStyleSheet(btn_primary())
         btn_add.clicked.connect(self.add_quota_dialog)
+        header.addStretch()
+        header.addWidget(btn_refresh)
         header.addWidget(btn_add)
         
         layout.addLayout(header)
@@ -33,8 +37,13 @@ class LeaveQuotaManagement(QWidget):
         # Table
         self.table = QTableWidget()
         self.table.setColumnCount(6)
+
         self.table.setHorizontalHeaderLabels(["Year", "Leave Type", "Quota", "Company", "Business Area", "Actions"])
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        self.table.verticalHeader().setDefaultSectionSize(36)
+        self.table.verticalHeader().hide()
+        self.table.horizontalHeader().setSectionResizeMode(5, QHeaderView.ResizeMode.Fixed)
+        self.table.setColumnWidth(5, 160)
         layout.addWidget(self.table)
         
     def load_data(self):
@@ -56,15 +65,17 @@ class LeaveQuotaManagement(QWidget):
             
             # Actions
             action_widget = QWidget()
+            action_widget.setStyleSheet("background: transparent;")
             action_layout = QHBoxLayout(action_widget)
             action_layout.setContentsMargins(2, 2, 2, 2)
             
             btn_edit = QPushButton("Edit")
+            btn_edit.setStyleSheet(btn_small_edit())
             btn_edit.clicked.connect(lambda ch, x=q: self.add_quota_dialog(x))
             action_layout.addWidget(btn_edit)
             
             btn_delete = QPushButton("Delete")
-            btn_delete.setStyleSheet("background-color: #f44336; color: white;")
+            btn_delete.setStyleSheet(btn_small_delete())
             btn_delete.clicked.connect(lambda ch, x=q: self.delete_quota(x))
             action_layout.addWidget(btn_delete)
             
@@ -133,6 +144,7 @@ class LeaveQuotaManagement(QWidget):
         form.addRow("Business Area:", ba_combo)
         
         btn_save = QPushButton("Save")
+        btn_save.setStyleSheet(btn_primary())
         btn_save.clicked.connect(lambda: self.save_quota(dialog, {
             "id": quota.id if quota else None,
             "year": year_input.value(),

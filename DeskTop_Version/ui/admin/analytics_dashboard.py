@@ -1,3 +1,4 @@
+from ui.btn_styles import btn_primary, btn_neutral
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QComboBox,
     QFrame, QGridLayout, QPushButton, QSizePolicy, QScrollArea,
@@ -149,6 +150,7 @@ class AnalyticsDashboard(QWidget):
         hdr.addWidget(self.lbl_date)
 
         btn_refresh = QPushButton("Refresh")
+        btn_refresh.setStyleSheet(btn_neutral())
         btn_refresh.setStyleSheet(
             "QPushButton{background:#3F51B5;color:white;border:none;border-radius:6px;"
             "padding:5px 14px;font-weight:600;font-size:12px;}"
@@ -210,8 +212,11 @@ class AnalyticsDashboard(QWidget):
         right_lay.addWidget(_section_header("Business Area — Today"))
         self._tbl_ba = QTableWidget()
         self._tbl_ba.setColumnCount(4)
+
         self._tbl_ba.setHorizontalHeaderLabels(["Business Area", "Total", "Present", "Rate"])
         self._tbl_ba.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        self._tbl_ba.verticalHeader().setDefaultSectionSize(36)
+        self._tbl_ba.verticalHeader().hide()
         self._tbl_ba.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self._tbl_ba.setAlternatingRowColors(True)
         self._tbl_ba.verticalHeader().setVisible(False)
@@ -231,8 +236,11 @@ class AnalyticsDashboard(QWidget):
         act_lay.addWidget(_section_header("Recent Attendance Activity"))
         self._tbl_recent = QTableWidget()
         self._tbl_recent.setColumnCount(4)
+
         self._tbl_recent.setHorizontalHeaderLabels(["Employee", "Action", "Time", "Business Area"])
         self._tbl_recent.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        self._tbl_recent.verticalHeader().setDefaultSectionSize(36)
+        self._tbl_recent.verticalHeader().hide()
         self._tbl_recent.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self._tbl_recent.verticalHeader().setVisible(False)
         self._tbl_recent.setAlternatingRowColors(True)
@@ -247,8 +255,11 @@ class AnalyticsDashboard(QWidget):
         lv_lay.addWidget(_section_header("Pending Leave Requests"))
         self._tbl_leaves = QTableWidget()
         self._tbl_leaves.setColumnCount(4)
+
         self._tbl_leaves.setHorizontalHeaderLabels(["Employee", "Type", "From", "To"])
         self._tbl_leaves.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        self._tbl_leaves.verticalHeader().setDefaultSectionSize(36)
+        self._tbl_leaves.verticalHeader().hide()
         self._tbl_leaves.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self._tbl_leaves.verticalHeader().setVisible(False)
         self._tbl_leaves.setAlternatingRowColors(True)

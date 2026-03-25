@@ -1,3 +1,5 @@
+from ui.custom_widgets import make_input_group
+from ui.btn_styles import btn_primary, btn_neutral
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel,
     QTableWidget, QTableWidgetItem, QDialog, QLineEdit,
@@ -55,17 +57,22 @@ class ShiftManagement(QWidget):
         # Table — 7 columns
         self.table = QTableWidget()
         self.table.setColumnCount(7)
+        self.table.verticalHeader().setDefaultSectionSize(36)
+        self.table.verticalHeader().hide()
+
         self.table.setHorizontalHeaderLabels(
             ["Name", "Company", "Business Area", "Start", "End", "Late (min)", "Action"]
         )
         hh = self.table.horizontalHeader()
         hh.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
-        hh.setSectionResizeMode(5, QHeaderView.ResizeMode.ResizeToContents)
-        hh.setSectionResizeMode(6, QHeaderView.ResizeMode.ResizeToContents)
+
+
         self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.setAlternatingRowColors(True)
         self.table.verticalHeader().setVisible(False)
+        hh.setSectionResizeMode(6, QHeaderView.ResizeMode.Fixed)
+        self.table.setColumnWidth(6, 160)
         layout.addWidget(self.table)
 
         self.lbl_count = QLabel("")
@@ -162,7 +169,7 @@ class ShiftManagement(QWidget):
         name_input = QLineEdit()
         if shift_obj:
             name_input.setText(shift_obj.name)
-        form.addRow("Shift Name:", name_input)
+        form.addRow(make_input_group("Shift Name:", name_input))
 
         # Company scope
         cmb_company = QComboBox()
@@ -174,7 +181,7 @@ class ShiftManagement(QWidget):
                 if cmb_company.itemData(i) == shift_obj.company_id:
                     cmb_company.setCurrentIndex(i)
                     break
-        form.addRow("Company Scope:", cmb_company)
+        form.addRow(make_input_group("Company Scope:", cmb_company))
 
         # Business Area scope
         cmb_ba = QComboBox()
@@ -198,7 +205,7 @@ class ShiftManagement(QWidget):
                 if cmb_ba.itemData(i) == shift_obj.business_area_id:
                     cmb_ba.setCurrentIndex(i)
                     break
-        form.addRow("Business Area Scope:", cmb_ba)
+        form.addRow(make_input_group("Business Area Scope:", cmb_ba))
 
         # Times
         time_fmt = Config.get_qt_time_fmt()
@@ -207,29 +214,27 @@ class ShiftManagement(QWidget):
         start_input.setTime(
             QTime(shift_obj.start_time.hour, shift_obj.start_time.minute) if shift_obj else QTime(9, 0)
         )
-        form.addRow("Start Time:", start_input)
+        form.addRow(make_input_group("Start Time:", start_input))
 
         end_input = QTimeEdit()
         end_input.setDisplayFormat(time_fmt)
         end_input.setTime(
             QTime(shift_obj.end_time.hour, shift_obj.end_time.minute) if shift_obj else QTime(17, 0)
         )
-        form.addRow("End Time:", end_input)
+        form.addRow(make_input_group("End Time:", end_input))
 
         allowance_input = QSpinBox()
         allowance_input.setRange(0, 120)
         allowance_input.setValue(shift_obj.late_allowance_minutes if shift_obj else 15)
         allowance_input.setSuffix(" min")
-        form.addRow("Late Allowance:", allowance_input)
+        form.addRow(make_input_group("Late Allowance:", allowance_input))
 
         btn_row = QHBoxLayout()
         btn_cancel = QPushButton("Cancel")
         btn_cancel.clicked.connect(dialog.reject)
         btn_save = QPushButton("Save")
         btn_save.setDefault(True)
-        btn_save.setStyleSheet(
-            "QPushButton{background:#4CAF50;color:white;border:none;border-radius:4px;padding:6px 18px;font-weight:bold;}"
-        )
+        btn_save.setStyleSheet(btn_primary())
         btn_save.clicked.connect(lambda: self._save(
             dialog, shift_obj,
             name_input.text().strip(),
