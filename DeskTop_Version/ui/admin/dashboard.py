@@ -176,7 +176,7 @@ class AdminDashboard(QWidget):
         # ── Content area ───────────────────────────────────────────────────
         self.content_area = QStackedWidget()
         t2 = theme.current_palette()
-        self.content_area.setStyleSheet(f"background-color: {t2['bg_main']}; border: none;")
+        self.content_area.setStyleSheet(f"QStackedWidget {{ background-color: {t2['bg_main']}; border: none; }}")
         root.addWidget(self.content_area, stretch=1)
 
         self._populate_menu()
@@ -228,11 +228,13 @@ class AdminDashboard(QWidget):
             ],
             "System": [
                 {"label": "User Manager",         "key": "users"},
+                {"label": "System Logs",          "key": "system_logs"},
                 {"label": "Import Data",          "key": "legacy_import"},
                 {"label": "Backup & Restore",     "key": "backup"},
                 {"label": "Cloud Sync",           "key": "cloud"},
             ],
         }
+
 
         # Flat main items
         for item in groups["Main"]:
@@ -246,11 +248,14 @@ class AdminDashboard(QWidget):
         self.sidebar_layout.addWidget(div)
 
         # Collapsible sections
+        self.collapsible_boxes = []
         for section in ["Workforce", "Payroll & Bonus", "Organization", "Reports", "System"]:
             items = [i for i in groups[section] if is_allowed(i["key"])]
             if not items:
                 continue
             box = CollapsibleBox(section)
+            self.collapsible_boxes.append(box)
+            box.toggle_button.toggled.connect(lambda checked, b=box: self._on_box_toggled(checked, b))
             box_lay = QVBoxLayout()
             box_lay.setContentsMargins(12, 0, 0, 0)
             box_lay.setSpacing(0)
@@ -260,6 +265,13 @@ class AdminDashboard(QWidget):
             self.sidebar_layout.addWidget(box)
 
         self.sidebar_layout.addStretch()
+
+    def _on_box_toggled(self, checked, box):
+        if not checked:
+            return
+        for other_box in self.collapsible_boxes:
+            if other_box != box and other_box.toggle_button.isChecked():
+                other_box.toggle_button.setChecked(False)
 
     def _add_menu_btn(self, layout, label, key, flat=False):
         t = theme.current_palette()
@@ -395,6 +407,9 @@ class AdminDashboard(QWidget):
 
         from .payroll_config_management import PayrollConfigManagement
         self.pages["payroll_config"] = PayrollConfigManagement()
+
+        from .system_logs_manager import SystemLogsManager
+        self.pages["system_logs"] = SystemLogsManager()
 
         from .print_documents import PrintDocumentsModule
         self.pages["print_documents"] = PrintDocumentsModule(self.current_user.username)

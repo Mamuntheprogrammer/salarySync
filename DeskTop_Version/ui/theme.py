@@ -24,7 +24,7 @@ LIGHT = {
     "border":           "#e0e4f0",
     "accent":           "#3F51B5",
     "accent_hover":     "#303f9f",
-    "input_bg":         "#f6f8fa",
+    "input_bg":         "#ffffff",
     "input_border":     "#d0d7de",
     "table_alt":        "#f5f6ff",
     "header_bg":        "#eceeff",
@@ -107,6 +107,7 @@ def build_stylesheet() -> str:
         font-size: 12px;
         font-weight: 600;
         min-width: 72px;
+        min-height: 30px;
     }}
     QMessageBox QPushButton:hover, QDialogButtonBox QPushButton:hover {{ background-color: {t["accent_hover"]}; }}
     /* ── Frame / generic panels inside dialogs ─────────── */
@@ -122,9 +123,12 @@ def build_stylesheet() -> str:
     QSplitter::handle {{
         background-color: {t["border"]};
     }}
+    /* ── Labels ─────────────────────────────────────────── */
     QLabel {{
         color: {t["text_primary"]};
         background: transparent;
+        font-size: 13px;
+        font-weight: 500;
     }}
     QGroupBox {{
         color: {t["text_primary"]};
@@ -139,11 +143,6 @@ def build_stylesheet() -> str:
         color: {t["accent"]};
         font-weight: 700;
     }}
-    QLabel {{
-        font-size: 13px;
-        color: {t["text_primary"]};
-        font-weight: 500;
-    }}
     /* ── Buttons (global fallback) ─────────────────────── */
     QPushButton {{
         background-color: {t["accent"]};
@@ -153,6 +152,7 @@ def build_stylesheet() -> str:
         padding: 6px 14px;
         font-size: 12px;
         font-weight: 600;
+        min-height: 30px;
     }}
     QPushButton:hover {{ background-color: {t["accent_hover"]}; }}
     QPushButton:pressed {{ background-color: {t["accent_hover"]}; }}
@@ -160,37 +160,67 @@ def build_stylesheet() -> str:
         background-color: {t["border"]};
         color: {t["text_muted"]};
     }}
-    QLineEdit, QDateEdit, QTimeEdit, QSpinBox,
-    QDoubleSpinBox, QTextEdit, QPlainTextEdit, QComboBox {{
+    /* ── Inputs ─────────────────────────────────────────── */
+    QLineEdit, QDateEdit, QTimeEdit, QSpinBox, QDoubleSpinBox, QTextEdit, QPlainTextEdit, QComboBox {{
         background-color: {t["input_bg"]};
         color: {t["text_primary"]};
         border: 1px solid {t["input_border"]};
         border-radius: 6px;
-        padding: 6px 12px;
+        padding: 6px 10px;
         font-size: 13px;
-        min-height: 22px;
+        min-height: 30px;
     }}
-    QLineEdit:focus, QDateEdit:focus, QTimeEdit:focus,
-    QSpinBox:focus, QDoubleSpinBox:focus, QComboBox:focus {{
+    QLineEdit:focus, QDateEdit:focus, QTimeEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus, QComboBox:focus {{
         border: 2px solid {t["accent"]};
         background-color: {t["bg_card"]};
     }}
-
-    /* ── ComboBox ──────────────────────────────────────── */
-    QComboBox {{
-        /* Styles merged into generic inputs above */
-    }}
-    QComboBox:focus {{
-        /* Styles merged into generic inputs above */
+    QLineEdit:disabled, QDateEdit:disabled, QTimeEdit:disabled, QSpinBox:disabled, QDoubleSpinBox:disabled, QComboBox:disabled {{
+        background-color: {t["border"]};
+        color: {t["text_muted"]};
     }}
 
-    QComboBox QAbstractItemView {{
+    /* ── Custom SVG Arrows ─────────────────────────────── */
+    QComboBox::drop-down, QDateEdit::drop-down, QTimeEdit::drop-down, QDateTimeEdit::drop-down {{
+        border: none;
+        width: 32px;
+    }}
+    QComboBox::down-arrow {{
+        image: url(ui/icons/down.svg);
+        width: 12px;
+        height: 12px;
+    }}
+    QDateEdit::down-arrow {{
+        image: url(ui/icons/calendar.svg);
+        width: 14px;
+        height: 14px;
+    }}
+    QTimeEdit::down-arrow {{
+        image: url(ui/icons/down.svg);
+        width: 12px;
+        height: 12px;
+    }}
+    QSpinBox::up-button, QDoubleSpinBox::up-button, QTimeEdit::up-button {{
+        image: url(ui/icons/up.svg);
+        border: none;
+        width: 20px;
+        margin-top: 4px;
+    }}
+    QSpinBox::down-button, QDoubleSpinBox::down-button, QTimeEdit::down-button {{
+        image: url(ui/icons/down.svg);
+        border: none;
+        width: 20px;
+        margin-bottom: 4px;
+    }}
+
+    /* ── Dropdowns ─────────────────────────────────────── */
+    QComboBox QAbstractItemView, QDateEdit QAbstractItemView, QTimeEdit QAbstractItemView, QDateTimeEdit QAbstractItemView {{
         background-color: {t["bg_card"]};
         color: {t["text_primary"]};
         selection-background-color: {t["accent"]};
         selection-color: white;
         border: 1px solid {t["border"]};
         outline: none;
+        padding: 4px;
     }}
     /* ── Tables ────────────────────────────────────────── */
     QTableWidget, QTableView {{
@@ -200,13 +230,11 @@ def build_stylesheet() -> str:
         border: 1px solid {t["border"]};
         border-radius: 6px;
         outline: none;
+        alternate-background-color: {t["table_alt"]};
     }}
     QTableWidget::item, QTableView::item {{
         color: {t["text_primary"]};
         padding: 5px 8px;
-    }}
-    QTableWidget::item:alternate, QTableView::item:alternate {{
-        background-color: {t["table_alt"]};
     }}
     QTableWidget::item:selected, QTableView::item:selected {{
         background-color: {t["accent"]};
@@ -219,7 +247,7 @@ def build_stylesheet() -> str:
     QHeaderView::section {{
         background-color: {t["header_bg"]};
         color: {t["text_primary"]};
-        padding: 6px 8px;
+        padding: 7px 8px;
         border: none;
         border-bottom: 2px solid {t["accent"]};
         font-weight: 700;
@@ -228,6 +256,9 @@ def build_stylesheet() -> str:
     QHeaderView::section:checked {{
         background-color: {t["accent"]};
         color: white;
+    }}
+    QHeaderView {{
+        background-color: {t["header_bg"]};
     }}
     /* ── List / Tree ───────────────────────────────────── */
     QListWidget, QTreeWidget, QListView, QTreeView {{
@@ -304,6 +335,12 @@ def build_stylesheet() -> str:
     QCalendarWidget {{
         min-width: 320px;
         min-height: 260px;
+        background-color: {t["bg_card"]};
+        color: {t["text_primary"]};
+    }}
+    QCalendarWidget QWidget {{
+        alternate-background-color: {t["bg_panel"]};
+        color: {t["text_primary"]};
     }}
     QCalendarWidget QWidget#qt_calendar_navigationbar {{
         background-color: {t["bg_topbar"]};
@@ -312,18 +349,16 @@ def build_stylesheet() -> str:
     QCalendarWidget QToolButton {{
         color: {t["text_primary"]};
         background-color: transparent;
-        font-weight: bold;
+        font-weight: 700;
         border: none;
-        padding: 4px;
+        padding: 5px;
         margin: 2px;
-    }}
-    QCalendarWidget QToolButton:hover {{
-        background-color: {t["sidebar_hover"]};
         border-radius: 4px;
     }}
-    QCalendarWidget QToolButton::menu-indicator {{
-        image: none;
+    QCalendarWidget QToolButton:hover {{
+        background-color: {t["bg_main"]};
     }}
+    /* The calendar table cells */
     QCalendarWidget QTableView {{
         background-color: {t["bg_card"]};
         color: {t["text_primary"]};
@@ -332,20 +367,27 @@ def build_stylesheet() -> str:
         gridline-color: {t["border"]};
         outline: 0;
     }}
-    QCalendarWidget QTableView:enabled {{
+    QCalendarWidget QAbstractItemView:enabled {{
         color: {t["text_primary"]};
+        background-color: {t["bg_card"]};
+        selection-background-color: {t["accent"]};
+        selection-color: white;
     }}
-    QCalendarWidget QTableView:disabled {{
+    QCalendarWidget QAbstractItemView:disabled {{
         color: {t["text_muted"]};
     }}
+
+
+
     QCalendarWidget QSpinBox {{
         color: {t["text_primary"]};
-        background: transparent;
+        background: {t["input_bg"]};
         border: 1px solid {t["border"]};
     }}
     QCalendarWidget QMenu {{
         color: {t["text_primary"]};
         background-color: {t["bg_card"]};
+        border: 1px solid {t["border"]};
     }}
     /* ── Form fields generic ───────────────────────────── */
     QCheckBox {{
@@ -383,5 +425,13 @@ def build_stylesheet() -> str:
         background-color: transparent;
         border: none;
     }}
+    /* ── Form layout label alignment ───────────────────── */
+    QFormLayout QLabel {{
+        color: {t["text_primary"]};
+        font-weight: 500;
+        font-size: 13px;
+        background: transparent;
+    }}
     """
+
 

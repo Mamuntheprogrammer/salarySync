@@ -1,7 +1,7 @@
-from ui.custom_widgets import make_input_group
 from ui.btn_styles import btn_primary, btn_neutral, btn_danger
-from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton, 
-                             QLabel, QTableWidget, QTableWidgetItem, QDateEdit, 
+from ui.page_helpers import make_page_header, apply_table_defaults
+from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
+                             QLabel, QTableWidget, QTableWidgetItem, QDateEdit,
                              QHeaderView, QComboBox, QMessageBox, QFileDialog, QTabWidget)
 from PyQt6.QtCore import QDate, Qt
 from database import get_db_session
@@ -19,28 +19,32 @@ class ReportsModule(QWidget):
         self.init_ui()
 
     def init_ui(self):
-        layout = QVBoxLayout()
-        self.setLayout(layout)
-        
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
+
+        layout.addWidget(make_page_header("Reports",
+                                          "Generate, filter, and export attendance and payroll reports"))
+
+        content = QWidget()
+        cl = QVBoxLayout(content)
+        cl.setContentsMargins(20, 12, 20, 12)
+        cl.setSpacing(0)
+
         self.tabs = QTabWidget()
-        
-        # Tab 1: Master Summary
-        self.summary_tab = InternalReportWidget(default_mode="report_master_summary")
-        self.tabs.addTab(self.summary_tab, "Summary Report")
-        
-        # Tab 2: Month Wise Attendance
+
+        self.summary_tab    = InternalReportWidget(default_mode="report_master_summary")
         self.month_wise_tab = InternalReportWidget(default_mode="report_month_wise_attendance")
+        self.employee_tab   = InternalReportWidget(default_mode="report_employee_info")
+        self.bonus_tab      = InternalReportWidget(default_mode="report_bonus")
+
+        self.tabs.addTab(self.summary_tab,    "Summary Report")
         self.tabs.addTab(self.month_wise_tab, "Month Wise Attendance")
-        
-        # Tab 3: Employee Info Report
-        self.employee_tab = InternalReportWidget(default_mode="report_employee_info")
-        self.tabs.addTab(self.employee_tab, "Employee Report")
-        
-        # Tab 4: Bonus Report
-        self.bonus_tab = InternalReportWidget(default_mode="report_bonus")
-        self.tabs.addTab(self.bonus_tab, "Bonus Report")
-        
-        layout.addWidget(self.tabs)
+        self.tabs.addTab(self.employee_tab,   "Employee Report")
+        self.tabs.addTab(self.bonus_tab,      "Bonus Report")
+
+        cl.addWidget(self.tabs)
+        layout.addWidget(content, stretch=1)
 
 class InternalReportWidget(QWidget):
     def __init__(self, default_mode="report_master_summary"):
@@ -117,17 +121,15 @@ class InternalReportWidget(QWidget):
         self.header_layout.addStretch()
         layout.addLayout(self.header_layout)
         
-        # Table
         self.table = QTableWidget()
         self.table.setAlternatingRowColors(True)
-        # Header: allow word wrap by fixing height and enabling wrap
-        header = self.table.horizontalHeader()
-        header.setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
-        header.setStretchLastSection(True)
-        header.setDefaultAlignment(Qt.AlignmentFlag.AlignCenter | Qt.AlignmentFlag.AlignVCenter)
-        header.setMinimumSectionSize(80)
-        header.setDefaultSectionSize(120)
-        header.setMinimumHeight(36)   # Two-line header height, can grow on high-DPI
+        apply_table_defaults(
+            self.table,
+            stretch_cols=list(range(0, 15)),   # report tables: all stretch, user can resize
+            fixed_cols={}
+        )
+        self.table.horizontalHeader().setMinimumSectionSize(75)
+        self.table.horizontalHeader().setDefaultSectionSize(110)
         self.table.setWordWrap(True)
         layout.addWidget(self.table)
         

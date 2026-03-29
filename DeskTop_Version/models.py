@@ -320,3 +320,18 @@ class SalaryBreakdown(Base):
     
     # Relationships
     employee = relationship("Employee", back_populates="salary_breakdowns")
+
+class SystemLog(Base):
+    __tablename__ = 'system_logs'
+    
+    id = Column(Integer, primary_key=True)
+    timestamp = Column(DateTime, default=datetime.now)
+    user_id = Column(Integer, ForeignKey('admin_users.id'), nullable=True)
+    action_type = Column(String(20), nullable=False) # Created, Updated, Deleted
+    entity_type = Column(String(50), nullable=False) # e.g., 'Employee', 'Company'
+    entity_id = Column(Integer, nullable=True)
+    details = Column(String(2000), nullable=True) # JSON-formatted changes or description
+    
+    # Relationships
+    user = relationship("AdminUser")
+

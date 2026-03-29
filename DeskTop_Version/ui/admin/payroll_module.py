@@ -1,282 +1,253 @@
-from ui.custom_widgets import make_input_group
 from ui.btn_styles import btn_primary, btn_neutral
-from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton, 
-                             QLabel, QTableWidget, QTableWidgetItem, QComboBox, 
-                             QHeaderView, QMessageBox, QSpinBox)
+from ui.page_helpers import make_page_header, apply_table_defaults
+from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
+                             QLabel, QTableWidget, QTableWidgetItem, QComboBox,
+                             QMessageBox, QSpinBox, QFileDialog)
 from PyQt6.QtCore import Qt
-from database import get_db_session
-from models import Employee
-from services.payroll_service import PayrollService
 from database import get_db_session
 from models import Employee, Company, BusinessArea
 from services.payroll_service import PayrollService
 from datetime import date, datetime
 import csv
-from PyQt6.QtWidgets import QFileDialog
+
 
 class PayrollModule(QWidget):
     def __init__(self):
         super().__init__()
+        self.export_data = []
         self.init_ui()
         self.load_filters()
-        
+
     def init_ui(self):
-        layout = QVBoxLayout()
-        self.setLayout(layout)
-        
-        # Controls
-        header = QHBoxLayout()
-        header.addWidget(QLabel("<h2>Run Payroll</h2>"))
-        
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
+
+        layout.addWidget(make_page_header("Run Payroll",
+                                          "Calculate monthly salary and save payroll records"))
+
+        content = QWidget()
+        cl = QVBoxLayout(content)
+        cl.setContentsMargins(20, 16, 20, 16)
+        cl.setSpacing(10)
+
+        # Filter toolbar
+        filter_row = QHBoxLayout()
+        filter_row.setSpacing(12)
+
+        def labeled(text, widget):
+            lbl = QLabel(text)
+            lbl.setStyleSheet("background: transparent;")
+            wrap = QHBoxLayout()
+            wrap.setSpacing(4)
+            wrap.addWidget(lbl)
+            wrap.addWidget(widget)
+            w = QWidget()
+            w.setStyleSheet("background: transparent;")
+            w.setLayout(wrap)
+            return w
+
         self.month_sel = QComboBox()
-        self.month_sel.addItems(["January", "February", "March", "April", "May", "June", 
+        self.month_sel.addItems(["January", "February", "March", "April", "May", "June",
                                  "July", "August", "September", "October", "November", "December"])
         self.month_sel.setCurrentIndex(date.today().month - 1)
-        header.addWidget(make_input_group("Month", self.month_sel, 60))
-        
+        self.month_sel.setMinimumWidth(110)
+
         self.year_sel = QSpinBox()
         self.year_sel.setRange(2020, 2030)
         self.year_sel.setValue(date.today().year)
-        header.addWidget(make_input_group("Year", self.year_sel, 60))
-        
-        # Filters
+        self.year_sel.setMinimumWidth(80)
+
         self.company_combo = QComboBox()
         self.company_combo.addItem("All Companies", None)
+        self.company_combo.setMinimumWidth(150)
         self.company_combo.currentIndexChanged.connect(self.on_company_change)
-        header.addWidget(make_input_group("Company", self.company_combo, 80))
-        
+
         self.ba_combo = QComboBox()
         self.ba_combo.addItem("All Areas", None)
-        header.addWidget(make_input_group("Area", self.ba_combo, 60))
-        
-        btn_calc = QPushButton("Calculate Payroll")
+        self.ba_combo.setMinimumWidth(150)
+
+        filter_row.addWidget(labeled("Month:", self.month_sel))
+        filter_row.addWidget(labeled("Year:", self.year_sel))
+        filter_row.addWidget(labeled("Company:", self.company_combo))
+        filter_row.addWidget(labeled("Area:", self.ba_combo))
+        filter_row.addStretch()
+
+        btn_calc = QPushButton("⟳  Calculate")
         btn_calc.setStyleSheet(btn_neutral())
         btn_calc.clicked.connect(self.calculate_payroll)
-        header.addWidget(btn_calc)
-        
-        btn_save = QPushButton("Save to Database")
+        filter_row.addWidget(btn_calc)
+
+        btn_save = QPushButton("💾  Save to DB")
         btn_save.setStyleSheet(btn_primary())
         btn_save.clicked.connect(self.save_to_database)
-        header.addWidget(btn_save)
-        
-        header.addStretch()
-        layout.addLayout(header)
-        
-        # Table
+        filter_row.addWidget(btn_save)
+
+        btn_export = QPushButton("CSV")
+        btn_export.setStyleSheet(btn_neutral())
+        btn_export.clicked.connect(lambda: self.export_to_csv(
+            self.export_data, self.month_sel.currentIndex() + 1, self.year_sel.value()
+        ) if self.export_data else QMessageBox.warning(self, "Warning", "Calculate payroll first."))
+        filter_row.addWidget(btn_export)
+
+        cl.addLayout(filter_row)
+
         self.table = QTableWidget()
         self.table.setColumnCount(12)
-
         self.table.setHorizontalHeaderLabels([
-            "Employee", "Base Salary", "Work Hrs", "Present Days", "Late Ded.", "Late Days Pen.", "Short Lv Ded.", "OT Pay", "Hol. OT Pay", "Net Salary", "Divisor", "Status"
+            "Employee", "Base Salary", "Work Hrs", "Present Days",
+            "Late Ded.", "Late Days Pen.", "Short Lv Ded.",
+            "OT Pay", "Hol. OT Pay", "Net Salary", "Divisor", "Status"
         ])
-        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
-        self.table.verticalHeader().setDefaultSectionSize(36)
-        self.table.verticalHeader().hide()
-        self.table.horizontalHeader().setSectionResizeMode(11, QHeaderView.ResizeMode.Fixed)
-        self.table.setColumnWidth(11, 160)
-        layout.addWidget(self.table)
-        
+        apply_table_defaults(
+            self.table,
+            stretch_cols=[0],
+            fixed_cols={1: 90, 2: 75, 3: 80, 4: 80, 5: 90, 6: 85,
+                        7: 75, 8: 80, 9: 90, 10: 65, 11: 70}
+        )
+        cl.addWidget(self.table)
+
+        self.lbl_status = QLabel("Ready. Apply filters and click Calculate.")
+        self.lbl_status.setStyleSheet("color: #55557a; font-size: 12px; background: transparent;")
+        cl.addWidget(self.lbl_status)
+
+        layout.addWidget(content, stretch=1)
+
+    def load_filters(self):
+        self.company_combo.blockSignals(True)
+        session = get_db_session()
+        for c in session.query(Company).all():
+            self.company_combo.addItem(c.name, c.id)
+        self.company_combo.blockSignals(False)
+
+    def on_company_change(self):
+        self.ba_combo.blockSignals(True)
+        self.ba_combo.clear()
+        self.ba_combo.addItem("All Areas", None)
+        comp_id = self.company_combo.currentData()
+        if comp_id:
+            session = get_db_session()
+            for ba in session.query(BusinessArea).filter_by(company_id=comp_id).all():
+                self.ba_combo.addItem(ba.name, ba.id)
+        self.ba_combo.blockSignals(False)
+
     def calculate_payroll(self):
         month = self.month_sel.currentIndex() + 1
         year = self.year_sel.value()
-        
         session = get_db_session()
-        
-        # Filter Logic
+
         query = session.query(Employee)
         if self.company_combo.currentData():
             query = query.filter_by(company_id=self.company_combo.currentData())
         if self.ba_combo.currentData():
             query = query.filter_by(business_area_id=self.ba_combo.currentData())
-            
+
         employees = query.all()
-        
         self.table.setRowCount(0)
-        
         self.export_data = []
-        
+        self.table.itemChanged.disconnect() if self.table.receivers(self.table.itemChanged) > 0 else None
+
         for row, emp in enumerate(employees):
             payroll = PayrollService.calculate_salary(session, emp.id, month, year)
-            
-            if payroll:
-                payroll["employee_id"] = emp.id # Keep ID for saving
-                self.table.insertRow(row)
-                
-                # Helper to add editable item
-                def add_item(col, val, editable=False):
-                    item = QTableWidgetItem(str(val))
-                    if not editable:
-                        item.setFlags(item.flags() ^ Qt.ItemFlag.ItemIsEditable)
-                    self.table.setItem(row, col, item)
+            if not payroll:
+                continue
+            payroll["employee_id"] = emp.id
+            self.table.insertRow(row)
 
-                add_item(0, payroll["employee_name"], False)
-                add_item(1, payroll["base_salary"], True)
-                
-                # Format Work Hours to HH:MM
-                wh_val = payroll["total_work_hours"]
-                hours = int(wh_val)
-                minutes = int((wh_val - hours) * 60)
-                wh_str = f"{hours}:{minutes:02d}"
-                
-                add_item(2, wh_str, False) # Work Hrs
-                add_item(3, payroll["present_days"], False)
-                add_item(4, payroll["late_deduction"], True)
-                add_item(5, payroll["late_days_penalty"], True)
-                add_item(6, payroll["short_leave_deduction"], True)
-                add_item(7, payroll["ot_pay"], True)
-                add_item(8, payroll["holiday_ot_pay"], True)
-                add_item(9, payroll["net_salary"], True) 
-                add_item(10, payroll.get("divisor_used", 30), False)
-                add_item(11, "Draft", False)
-                
-                self.export_data.append(payroll)
-        
+            wh = payroll["total_work_hours"]
+            h, m = int(wh), int((wh - int(wh)) * 60)
+
+            def add(col, val, editable=False, r=row):
+                item = QTableWidgetItem(str(val))
+                if not editable:
+                    item.setFlags(item.flags() ^ Qt.ItemFlag.ItemIsEditable)
+                self.table.setItem(r, col, item)
+
+            add(0, payroll["employee_name"])
+            add(1, payroll["base_salary"], True)
+            add(2, f"{h}:{m:02d}")
+            add(3, payroll["present_days"])
+            add(4, payroll["late_deduction"], True)
+            add(5, payroll["late_days_penalty"], True)
+            add(6, payroll["short_leave_deduction"], True)
+            add(7, payroll["ot_pay"], True)
+            add(8, payroll["holiday_ot_pay"], True)
+            add(9, payroll["net_salary"], True)
+            add(10, payroll.get("divisor_used", 30))
+            add(11, "Draft")
+            self.export_data.append(payroll)
+
         self.table.itemChanged.connect(self.on_item_changed)
-
-        if self.export_data:
-            reply = QMessageBox.question(self, "Export", "Payroll Calculated. Do you want to save the output to CSV?", QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
-            if reply == QMessageBox.StandardButton.Yes:
-                self.export_to_csv(self.export_data, month, year)
-        else:
-             QMessageBox.information(self, "Info", "No data calculated for the selected filters.")
+        n = len(self.export_data)
+        self.lbl_status.setText(f"Calculated {n} employee(s) for {self.month_sel.currentText()} {year}.")
+        if not self.export_data:
+            QMessageBox.information(self, "Info", "No data calculated for the selected filters.")
 
     def save_to_database(self):
-        if not hasattr(self, 'export_data') or not self.export_data:
+        if not self.export_data:
             QMessageBox.warning(self, "Warning", "Please calculate payroll first.")
             return
-
         month = self.month_sel.currentIndex() + 1
         year = self.year_sel.value()
-        
-        reply = QMessageBox.question(self, "Confirm Save", f"Save snapshot for {self.month_sel.currentText()} {year}? This preserves the historical values.", QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
-        
-        if reply == QMessageBox.StandardButton.Yes:
-            # We must pull values straight from the visual table, in case the user edited them!
-            updated_data = []
-            for r, orig_dict in enumerate(self.export_data):
-                data_copy = dict(orig_dict)
-                try:
-                    # Column 1 = Base, Column 9 = Net Salary
-                    data_copy["base_salary"] = float(self.table.item(r, 1).text())
-                    data_copy["late_deduction"] = float(self.table.item(r, 4).text())
-                    data_copy["ot_pay"] = float(self.table.item(r, 7).text())
-                    data_copy["holiday_ot_pay"] = float(self.table.item(r, 8).text())
-                    data_copy["net_salary"] = float(self.table.item(r, 9).text())
-                except:
-                    pass
-                updated_data.append(data_copy)
+        if QMessageBox.question(self, "Confirm Save",
+                                f"Save snapshot for {self.month_sel.currentText()} {year}?",
+                                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+                                ) != QMessageBox.StandardButton.Yes:
+            return
 
-            session = get_db_session()
-            count, msg = PayrollService.save_payroll_run(session, month, year, updated_data)
-            
-            QMessageBox.information(self, "Database Saving", msg)
-            
-            # Change status string to "Saved"
-            self.table.blockSignals(True)
-            for r in range(self.table.rowCount()):
-                 item = QTableWidgetItem("Saved")
-                 item.setFlags(item.flags() ^ Qt.ItemFlag.ItemIsEditable)
-                 self.table.setItem(r, 11, item)
-            self.table.blockSignals(False)
-    
+        updated_data = []
+        for r, orig in enumerate(self.export_data):
+            d = dict(orig)
+            try:
+                d["base_salary"] = float(self.table.item(r, 1).text())
+                d["late_deduction"] = float(self.table.item(r, 4).text())
+                d["ot_pay"] = float(self.table.item(r, 7).text())
+                d["holiday_ot_pay"] = float(self.table.item(r, 8).text())
+                d["net_salary"] = float(self.table.item(r, 9).text())
+            except Exception:
+                pass
+            updated_data.append(d)
+
+        session = get_db_session()
+        _, msg = PayrollService.save_payroll_run(session, month, year, updated_data)
+        QMessageBox.information(self, "Saved", msg)
+
+        self.table.blockSignals(True)
+        for r in range(self.table.rowCount()):
+            item = QTableWidgetItem("Saved")
+            item.setFlags(item.flags() ^ Qt.ItemFlag.ItemIsEditable)
+            self.table.setItem(r, 11, item)
+        self.table.blockSignals(False)
+
     def on_item_changed(self, item):
-        # Simple logic: If any deduction/addition changes, update Net Salary?
-        # But user might want to Override Net Salary directly.
-        # So we should only auto-update if a component changes.
-        # And if Net changes, just accept it.
-        # Avoiding cyclic loops: block signals.
-        
-        if item.column() in [1, 4, 5, 6, 7, 8]: # Components (Indices shifted due to inserted column)
-             self.recalculate_row(item.row())
+        if item.column() in [1, 4, 5, 6, 7, 8]:
+            self.recalculate_row(item.row())
 
     def recalculate_row(self, row):
         try:
-             self.table.blockSignals(True)
-             base = float(self.table.item(row, 1).text() or 0)
-             late = float(self.table.item(row, 4).text() or 0)
-             late_pen = float(self.table.item(row, 5).text() or 0)
-             sl = float(self.table.item(row, 6).text() or 0)
-             ot = float(self.table.item(row, 7).text() or 0)
-             hol = float(self.table.item(row, 8).text() or 0)
-             
-             # We don't have absent deduction in column? It was part of calculation but not shown separately in table (hidden in Net?).
-             # Wait, logic in service: net = gross - late - late_pen - SL - absent + OT + HolOT.
-             # In table we show: Employee, Base, Present, Late, LatePen, SL, OT, HolOT, Net.
-             # Absent deduction is implicit? Or missed?
-             # Base Salary usually means Gross.
-             # If Absent days exist, Base should be adjusted or Absent Deduction shown.
-             # User didn't ask for Absent column. But Net might not match Base - Deductions + Additions if Absent is missing.
-             # I should probably add Absent Deduction column for clarity if I want to recalculate correctly. 
-             # For now, I'll assume Net = Base - (Late + Pen + SL) + (OT + Hol). Absent deduction is missing from the formula in UI recalculation!
-             # This is risky. But user just said "update the logic considering the payroll".
-             # I'll stick to manual override for Net if they want. 
-             # OR I add Absent Deduction column.
-             # Let's add Absent Deduction column (col index 3?)?
-             # Actually, simpler: Just allow editing Net Salary directly if calculation is complex.
-             # But if I change Late Deduction, Net SHOULD update. 
-             # Let's calculate: Net = Previous Net + (Old Late - New Late). 
-             # That requires storing old values. Complex.
-             # Let's just implement: Net = Base - (Late+Pen+SL) + OT + Hol. (Ignoring Absent for now? Or fetching Absent from service logic? - Absent logic is complex).
-             # Solution: Don't implement auto-recalc for now to avoid breaking hidden logic (Absent). Just allow editable fields. 
-             # The user said "payrol manage must have the autority to upadate the any fields".
-             # So if I update Late Deduction, Net Salary *won't* update automatically, user has to update Net Salary manually. 
-             # That's safer than auto-updating wrongly.
-             pass
-        except:
-             pass
+            self.table.blockSignals(True)
+            # Allow manual override: do not auto-recalc to avoid hidden absent deduction errors
+            pass
+        except Exception:
+            pass
         finally:
-             self.table.blockSignals(False)
-        
-        # Auto-prompt for export
-
-
-    def load_filters(self):
-        self.company_combo.blockSignals(True)
-        session = get_db_session()
-        companies = session.query(Company).all()
-        for c in companies:
-            self.company_combo.addItem(c.name, c.id)
-        self.company_combo.blockSignals(False)
-        
-    def on_company_change(self):
-        self.ba_combo.blockSignals(True)
-        self.ba_combo.clear()
-        self.ba_combo.addItem("All Areas", None)
-        
-        comp_id = self.company_combo.currentData()
-        if comp_id:
-            session = get_db_session()
-            bas = session.query(BusinessArea).filter_by(company_id=comp_id).all()
-            for ba in bas:
-                self.ba_combo.addItem(ba.name, ba.id)
-        
-        self.ba_combo.blockSignals(False)
+            self.table.blockSignals(False)
 
     def export_to_csv(self, data, month, year):
         timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
         default_name = f"Payroll_{date(year, month, 1).strftime('%B%Y')}_{timestamp}.csv"
-        
-        file_path, _ = QFileDialog.getSaveFileName(self, "Save Payroll", default_name, "CSV Files (*.csv)")
-        
+        file_path, _ = QFileDialog.getSaveFileName(self, "Save Payroll CSV", default_name, "CSV Files (*.csv)")
         if file_path:
             try:
+                cols = self.table.columnCount()
                 with open(file_path, 'w', newline='') as f:
                     writer = csv.writer(f)
-                    # Get Headers from Table
-                    cols = self.table.columnCount()
-                    headers = [self.table.horizontalHeaderItem(i).text() for i in range(cols)]
-                    writer.writerow(headers)
-                    
-                    # Get Data from Table
-                    rows = self.table.rowCount()
-                    for r in range(rows):
-                        row_data = []
-                        for c in range(cols):
-                            item = self.table.item(r, c)
-                            row_data.append(item.text() if item else "")
-                        writer.writerow(row_data)
-                        
-                QMessageBox.information(self, "Success", f"Saved to {file_path}")
-                QMessageBox.information(self, "Success", f"Saved to {file_path}")
+                    writer.writerow([self.table.horizontalHeaderItem(i).text() for i in range(cols)])
+                    for r in range(self.table.rowCount()):
+                        writer.writerow([
+                            (self.table.item(r, c).text() if self.table.item(r, c) else "")
+                            for c in range(cols)
+                        ])
+                QMessageBox.information(self, "Success", f"Saved to:\n{file_path}")
             except Exception as e:
-                QMessageBox.critical(self, "Error", f"Failed to save: {str(e)}")
+                QMessageBox.critical(self, "Error", str(e))

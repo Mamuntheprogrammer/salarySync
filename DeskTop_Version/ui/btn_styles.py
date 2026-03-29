@@ -10,7 +10,8 @@ Usage:
 
 def _make(bg: str, hover: str, text: str = "white",
           padding: str = "7px 16px", font_size: str = "12px",
-          border_radius: str = "5px", extra: str = "") -> str:
+          border_radius: str = "5px", min_height: str = "30px",
+          extra: str = "") -> str:
     return f"""
         QPushButton {{
             background-color: {bg};
@@ -20,11 +21,12 @@ def _make(bg: str, hover: str, text: str = "white",
             padding: {padding};
             font-size: {font_size};
             font-weight: 600;
+            min-height: {min_height};
             {extra}
         }}
         QPushButton:hover {{ background-color: {hover}; }}
         QPushButton:pressed {{ background-color: {hover}; opacity: 0.85; }}
-        QPushButton:disabled {{ background-color: #b0b0b0; color: #e0e0e0; }}
+        QPushButton:disabled {{ background-color: #c8cdd6; color: #888; }}
     """
 
 
@@ -54,39 +56,56 @@ def btn_teal() -> str:
     """Teal — distinct secondary action like Browse / Select."""
     return _make("#00897B", "#00695C")
 
+def btn_info() -> str:
+    """Cyan-blue — view / info / browse actions."""
+    return _make("#0288D1", "#0277BD")
+
 def btn_login() -> str:
     """Large indigo — login / submit button."""
     return _make("#3F51B5", "#303f9f",
-                 padding="12px 24px", font_size="14px", border_radius="6px")
+                 padding="12px 24px", font_size="14px",
+                 border_radius="6px", min_height="44px")
 
 # ── Small inline row buttons (Edit / Delete columns) ────────────────────────
 
 def btn_small_edit() -> str:
     return _make("#FF9800", "#E65100",
-                 padding="3px 10px", font_size="11px", border_radius="4px")
+                 padding="4px 10px", font_size="11px",
+                 border_radius="4px", min_height="26px")
 
 def btn_small_delete() -> str:
     return _make("#D32F2F", "#B71C1C",
-                 padding="3px 10px", font_size="11px", border_radius="4px")
+                 padding="4px 10px", font_size="11px",
+                 border_radius="4px", min_height="26px")
 
 def btn_small_neutral() -> str:
     return _make("#546E7A", "#455A64",
-                 padding="3px 10px", font_size="11px", border_radius="4px")
+                 padding="4px 10px", font_size="11px",
+                 border_radius="4px", min_height="26px")
 
 def btn_small_approve() -> str:
     return _make("#388E3C", "#2E7D32",
-                 padding="3px 10px", font_size="11px", border_radius="4px")
+                 padding="4px 10px", font_size="11px",
+                 border_radius="4px", min_height="26px")
 
 def btn_small_reject() -> str:
     return _make("#D32F2F", "#B71C1C",
-                 padding="3px 10px", font_size="11px", border_radius="4px")
+                 padding="4px 10px", font_size="11px",
+                 border_radius="4px", min_height="26px")
+
+def btn_small_info() -> str:
+    return _make("#0288D1", "#0277BD",
+                 padding="4px 10px", font_size="11px",
+                 border_radius="4px", min_height="26px")
 
 def btn_toggle_active() -> str:
     """Green — shown when entity is active (click to deactivate)."""
     return _make("#388E3C", "#2E7D32",
-                 padding="4px 10px", font_size="11px", border_radius="4px")
+                 padding="4px 10px", font_size="11px",
+                 border_radius="4px", min_height="26px")
 
 def btn_toggle_inactive() -> str:
     """Red — shown when entity is inactive (click to activate)."""
     return _make("#D32F2F", "#B71C1C",
-                 padding="4px 10px", font_size="11px", border_radius="4px")
+                 padding="4px 10px", font_size="11px",
+                 border_radius="4px", min_height="26px")

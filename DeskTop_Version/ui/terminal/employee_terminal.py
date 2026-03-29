@@ -249,7 +249,7 @@ class EmployeeTerminal(QWidget):
             self.camera.release()
             self.camera = None
         self.is_camera_running = False
-        self.video_label.setPixmap(QPixmap())   # force-blank the frame
+        self.video_label.clear()
         self.video_label.setText("Camera Offline")
         self.btn_toggle_cam.setText("Turn On Camera")
         self.btn_toggle_cam.setStyleSheet("""
@@ -346,6 +346,7 @@ class EmployeeTerminal(QWidget):
                             self.auto_clock_action(emp_id)
                             self.current_recognizing_id = None
                             self.recognition_start_time = None
+                            return  # Critical: Prevent the old frame from repainting after the camera logic resets!
                         else:
                             self.lbl_face_status.setText(f"Hold still... {self.auto_clock_delay - elapsed}s")
                             self.lbl_face_status.setStyleSheet("color: #2196F3; font-size: 18px; font-weight: bold; margin-top: 10px;")
@@ -448,8 +449,10 @@ class EmployeeTerminal(QWidget):
             was_running = self.is_camera_running
             if was_running:
                 self.timer.stop()
-                self.video_label.setPixmap(QPixmap())  # force-blank before dialog opens
+                self.video_label.clear()
                 self.video_label.setText("Please wait...")
+                from PyQt6.QtWidgets import QApplication
+                QApplication.processEvents()
 
             # Show the rich popup dialog
             popup = AttendancePopupDialog(self, result)

@@ -1,14 +1,14 @@
 {
     "company_name": "My Company",
     "time_format": "12h",
-    "db_path": "E:\\attensync\\salarySync\\DeskTop_Version\\data\\attensync_v3.db",
+    "db_path": "E:\\attensync\\backups\\v3\\data\\attensync_v3.db",
     "theme": "Light",
     "backup_frequency": "daily",
-    "backup_location": "E:\\attensync\\salarySync\\DeskTop_Version\\backups",
+    "backup_location": "E:\\attensync\\backups\\v3\\backups",
     "backup": {
         "enabled": false,
         "frequency": "daily",
-        "location": "E:\\attensync\\salarySync\\DeskTop_Version\\backups",
+        "location": "E:\\attensync\\backups\\v3\\backups",
         "last_backup_date": null
     },
     "online_mode": false,
@@ -17,8 +17,9 @@
         "last_sync": null
     },
     "remote_db": {
-        "connection_string": "",
-        "last_backup": null
+        "connection_string": "postgresql://postgres.zxouswurmenfmcvsnufo:polOLP1369P@aws-1-ap-south-1.pooler.supabase.com:5432/postgres",
+        "last_backup": null,
+        "last_sync": "2026-03-29 11:38:04"
     },
     "face_recognition": {
         "auto_clock_delay_seconds": 3

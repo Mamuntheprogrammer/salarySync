@@ -1,5 +1,5 @@
-from ui.custom_widgets import make_input_group
 from ui.btn_styles import btn_small_delete, btn_small_edit, btn_neutral, btn_primary
+from ui.page_helpers import make_page_header, apply_table_defaults, style_dialog
 from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton, 
                              QLabel, QTableWidget, QTableWidgetItem, QDialog, 
                              QLineEdit, QFormLayout, QMessageBox, QHeaderView, QComboBox, 
@@ -16,18 +16,24 @@ class CalendarManagement(QWidget):
         self.init_ui()
         
     def init_ui(self):
-        layout = QVBoxLayout()
-        self.setLayout(layout)
-        
-        layout.addWidget(QLabel("<h2>Holiday & Weekly Off Manager</h2>"))
-        
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
+
+        layout.addWidget(make_page_header("Holiday & Weekly Off Manager",
+                                          "Manage public holidays and weekly off rules"))
+
+        content = QWidget()
+        cl = QVBoxLayout(content)
+        cl.setContentsMargins(20, 16, 20, 16)
+
         self.tabs = QTabWidget()
         self.tabs.addTab(self.create_holiday_tab(), "Public Holidays")
         self.tabs.addTab(self.create_weekly_tab(), "Weekly Holidays")
-        
-        layout.addWidget(self.tabs)
-        
-        # Initial Load
+        cl.addWidget(self.tabs)
+
+        layout.addWidget(content, stretch=1)
+
         self.load_holidays()
         self.load_weekly()
 
@@ -73,11 +79,10 @@ class CalendarManagement(QWidget):
         # Table
         self.hol_table = QTableWidget()
         self.hol_table.setColumnCount(7)
-
-        self.hol_table.setHorizontalHeaderLabels(["Date", "Description", "Type", "Company Code", "Business Area", "OT Eligible", "Action"])
-        self.hol_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
-        self.hol_table.verticalHeader().setDefaultSectionSize(36)
-        self.hol_table.verticalHeader().hide()
+        self.hol_table.setHorizontalHeaderLabels(["Date", "Description", "Type", "Company", "Business Area", "OT", "Actions"])
+        apply_table_defaults(self.hol_table,
+                             stretch_cols=[1, 3, 4],
+                             fixed_cols={0: 90, 2: 90, 5: 45, 6: 140})
         layout.addWidget(self.hol_table)
         
         return widget
@@ -175,8 +180,12 @@ class CalendarManagement(QWidget):
     def add_holiday_dialog(self, holiday_obj=None):
         session = get_db_session()
         dialog = QDialog(self)
-        dialog.setWindowTitle("Add Holiday")
+        dialog.setWindowTitle("Edit Holiday" if holiday_obj else "Add Holiday")
+        style_dialog(dialog, min_width=440)
         form = QFormLayout(dialog)
+        form.setContentsMargins(24, 20, 24, 20)
+        form.setSpacing(12)
+        form.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
         
         date_input = QDateEdit()
         date_input.setCalendarPopup(True)
@@ -231,12 +240,12 @@ class CalendarManagement(QWidget):
                 index = ba_input.findData(holiday_obj.business_area_id)
                 if index >= 0: ba_input.setCurrentIndex(index)
         
-        form.addRow(make_input_group("Date:", date_input))
-        form.addRow(make_input_group("Description:", desc_input))
-        form.addRow(make_input_group("Type:", type_input))
-        form.addRow(make_input_group("OT Eligible:", ot_input))
-        form.addRow(make_input_group("Company:", comp_input))
-        form.addRow(make_input_group("Business Area:", ba_input))
+        form.addRow("Date:", date_input)
+        form.addRow("Description:", desc_input)
+        form.addRow("Type:", type_input)
+        form.addRow("OT Eligible:", ot_input)
+        form.addRow("Company:", comp_input)
+        form.addRow("Business Area:", ba_input)
         
         btn_save = QPushButton("Save")
         btn_save.setStyleSheet(btn_primary())
@@ -316,11 +325,10 @@ class CalendarManagement(QWidget):
         
         self.weekly_table = QTableWidget()
         self.weekly_table.setColumnCount(4)
-
-        self.weekly_table.setHorizontalHeaderLabels(["Scope", "Day", "Target", "Action"])
-        self.weekly_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
-        self.weekly_table.verticalHeader().setDefaultSectionSize(36)
-        self.weekly_table.verticalHeader().hide()
+        self.weekly_table.setHorizontalHeaderLabels(["Scope", "Day", "Target", "Actions"])
+        apply_table_defaults(self.weekly_table,
+                             stretch_cols=[0, 2],
+                             fixed_cols={1: 100, 3: 140})
         layout.addWidget(self.weekly_table)
         
         return widget
@@ -372,8 +380,12 @@ class CalendarManagement(QWidget):
 
     def add_weekly_dialog(self, weekly_obj=None):
         dialog = QDialog(self)
-        dialog.setWindowTitle("Edit Weekly Holiday Rule" if weekly_obj else "Add Weekly Holiday Rule")
+        dialog.setWindowTitle("Edit Weekly Rule" if weekly_obj else "Add Weekly Holiday Rule")
+        style_dialog(dialog, min_width=440)
         form = QFormLayout(dialog)
+        form.setContentsMargins(24, 20, 24, 20)
+        form.setSpacing(12)
+        form.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
         
         day_input = QComboBox()
         days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
@@ -463,11 +475,11 @@ class CalendarManagement(QWidget):
                          idx_ba = ba_input.findData(weekly_obj.business_area_id)
                          if idx_ba >= 0: ba_input.setCurrentIndex(idx_ba)
 
-        form.addRow(make_input_group("Mode:", scope_layout))
-        form.addRow(make_input_group("Day:", day_input))
-        form.addRow(make_input_group("Company:", comp_input))
-        form.addRow(make_input_group("Business Area:", ba_input))
-        form.addRow(make_input_group("Shift:", shift_input))
+        form.addRow("Mode:", scope_layout)
+        form.addRow("Day of Week:", day_input)
+        form.addRow("Company:", comp_input)
+        form.addRow("Business Area:", ba_input)
+        form.addRow("Shift:", shift_input)
         
         btn_save = QPushButton("Save")
         btn_save.setStyleSheet(btn_primary())

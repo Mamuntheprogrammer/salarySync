@@ -1,29 +1,38 @@
-from ui.btn_styles import btn_primary, btn_neutral, btn_danger
+from ui.btn_styles import btn_primary, btn_neutral, btn_danger, btn_info
 import cv2
-from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton, 
+from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
                              QLabel, QComboBox, QMessageBox, QFrame, QSpinBox)
 from PyQt6.QtCore import Qt, QTimer
-from PyQt6.QtGui import QImage, QPixmap
+from PyQt6.QtGui import QImage, QPixmap, QFont
 from database import get_db_session
 from models import Employee, Company, BusinessArea
 from services.face_service import FaceService
 from config import Config
+from ui.page_helpers import make_page_header
+
 
 class FaceManager(QWidget):
     def __init__(self):
         super().__init__()
         self.camera = None
+        self.current_frame = None
         self.timer = QTimer()
         self.timer.timeout.connect(self.update_frame)
         self.is_camera_running = False
-        
         self.init_ui()
-        
+
     def init_ui(self):
-        main_layout = QHBoxLayout()
-        main_layout.setSpacing(20)
-        main_layout.setContentsMargins(20, 20, 20, 20)
-        self.setLayout(main_layout)
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(0, 0, 0, 0)
+        outer.setSpacing(0)
+        outer.addWidget(make_page_header("Face Registration Manager",
+                                         "Register and manage employee face profiles for attendance"))
+
+        body = QWidget()
+        main_layout = QHBoxLayout(body)
+        main_layout.setSpacing(16)
+        main_layout.setContentsMargins(20, 16, 20, 16)
+        outer.addWidget(body, stretch=1)
         
         # Left Side: Camera Box
         camera_container = QFrame()
@@ -59,13 +68,7 @@ class FaceManager(QWidget):
         
         # Action Buttons for Camera
         self.btn_toggle_cam = QPushButton("Turn On Camera")
-        self.btn_toggle_cam.setStyleSheet("""
-            QPushButton {
-                background-color: #2196F3; color: white; padding: 10px 20px; 
-                font-weight: bold; font-size: 14px; border-radius: 4px;
-            }
-            QPushButton:hover { background-color: #1976D2; }
-        """)
+        self.btn_toggle_cam.setStyleSheet(btn_info())
         self.btn_toggle_cam.clicked.connect(self.toggle_camera)
         
         btn_wrap = QHBoxLayout()
@@ -146,14 +149,8 @@ class FaceManager(QWidget):
         """)
         selection_layout.addWidget(self.emp_combo)
         
-        self.btn_refresh = QPushButton("Refresh List")
-        self.btn_refresh.setStyleSheet("""
-            QPushButton {
-                background-color: #9E9E9E; color: white; padding: 8px 15px; 
-                font-weight: bold; border-radius: 4px; margin-top: 10px;
-            }
-            QPushButton:hover { background-color: #757575; }
-        """)
+        self.btn_refresh = QPushButton("⟳  Refresh List")
+        self.btn_refresh.setStyleSheet(btn_neutral())
         self.btn_refresh.clicked.connect(self.load_companies)
         
         refresh_wrap = QHBoxLayout()
@@ -164,31 +161,18 @@ class FaceManager(QWidget):
         selection_layout.addStretch()
         
         self.btn_capture = QPushButton("Capture & Register Face")
-        self.btn_capture.setStyleSheet("""
-            QPushButton {
-                background-color: #4CAF50; color: white; padding: 15px 20px; 
-                font-weight: bold; font-size: 16px; border-radius: 4px;
-            }
-            QPushButton:disabled { background-color: #A5D6A7; }
-            QPushButton:hover { background-color: #388E3C; }
-        """)
+        self.btn_capture.setStyleSheet(btn_primary())
         self.btn_capture.clicked.connect(self.capture_face)
         self.btn_capture.setEnabled(False)
         selection_layout.addWidget(self.btn_capture)
         
         self.btn_delete = QPushButton("Delete Face Data")
-        self.btn_delete.setStyleSheet("""
-            QPushButton {
-                background-color: #f44336; color: white; padding: 10px 20px; 
-                font-weight: bold; font-size: 14px; border-radius: 4px; margin-top: 5px;
-            }
-            QPushButton:hover { background-color: #d32f2f; }
-        """)
+        self.btn_delete.setStyleSheet(btn_danger())
         self.btn_delete.clicked.connect(self.delete_face)
         selection_layout.addWidget(self.btn_delete)
-        
+
         main_layout.addWidget(selection_container, stretch=1)
-        
+
         self.load_companies()
         
     def get_font(self, size, bold=False):
@@ -292,15 +276,9 @@ class FaceManager(QWidget):
                 return
             self.is_camera_running = True
             self.btn_toggle_cam.setText("Turn Off Camera")
-            self.btn_toggle_cam.setStyleSheet("""
-                QPushButton {
-                    background-color: #f44336; color: white; padding: 10px 20px; 
-                    font-weight: bold; font-size: 14px; border-radius: 4px;
-                }
-                QPushButton:hover { background-color: #d32f2f; }
-            """)
+            self.btn_toggle_cam.setStyleSheet(btn_danger())
             self.btn_capture.setEnabled(True)
-            self.timer.start(30) # ~33fps
+            self.timer.start(30)
         else:
             self.stop_camera()
             
@@ -313,13 +291,7 @@ class FaceManager(QWidget):
         self.video_label.clear()
         self.video_label.setText("Camera Offline")
         self.btn_toggle_cam.setText("Turn On Camera")
-        self.btn_toggle_cam.setStyleSheet("""
-            QPushButton {
-                background-color: #2196F3; color: white; padding: 10px 20px; 
-                font-weight: bold; font-size: 14px; border-radius: 4px;
-            }
-            QPushButton:hover { background-color: #1976D2; }
-        """)
+        self.btn_toggle_cam.setStyleSheet(btn_info())
         self.btn_capture.setEnabled(False)
         self.current_frame = None
 

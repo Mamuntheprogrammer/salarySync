@@ -1,27 +1,34 @@
 from ui.btn_styles import btn_primary, btn_neutral, btn_danger
-from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton, 
-                             QLabel, QFileDialog, QCheckBox, QGroupBox, 
-                             QScrollArea, QMessageBox, QProgressBar, QTextEdit)
+from ui.page_helpers import make_page_header
+from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
+                             QLabel, QFileDialog, QCheckBox, QGroupBox,
+                             QScrollArea, QMessageBox, QTextEdit)
 from PyQt6.QtCore import Qt
 from config import Config
 from services.import_service import ImportService
 from services.sync_service import SyncService
 import os
 
+
 class ImportModule(QWidget):
     def __init__(self):
         super().__init__()
-        self.init_ui()
         self.selected_file = None
-        
+        self.init_ui()
+
     def init_ui(self):
-        layout = QVBoxLayout()
-        self.setLayout(layout)
-        
-        # Header
-        layout.addWidget(QLabel("<h2>Data Import</h2>"))
-        layout.addWidget(QLabel("Import data from Excel (.xlsx)."))
-        
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
+
+        layout.addWidget(make_page_header("Data Import",
+                                          "Import employees and attendance data from Excel (.xlsx)"))
+
+        content = QWidget()
+        cl = QVBoxLayout(content)
+        cl.setContentsMargins(20, 16, 20, 16)
+        cl.setSpacing(14)
+
         # 1. Template
         tpl_group = QGroupBox("1. Setup & Template")
         tpl_layout = QHBoxLayout()
@@ -34,62 +41,64 @@ class ImportModule(QWidget):
         tpl_layout.addWidget(btn_tpl)
         tpl_layout.addStretch()
         tpl_group.setLayout(tpl_layout)
-        layout.addWidget(tpl_group)
-        
+        cl.addWidget(tpl_group)
+
         # 2. Select File
         sel_group = QGroupBox("2. Select File")
         sel_layout = QHBoxLayout()
         self.lbl_file = QLabel("No file selected")
+        self.lbl_file.setStyleSheet("background: transparent; color: #444;")
         btn_browse = QPushButton("Browse...")
         btn_browse.setStyleSheet(btn_neutral())
         btn_browse.clicked.connect(self.browse_file)
-        
-        btn_clear = QPushButton("X")
-        btn_clear.setFixedWidth(30)
+
+        btn_clear = QPushButton("✕ Clear")
         btn_clear.setStyleSheet(btn_danger())
         btn_clear.clicked.connect(self.clear_file)
-        
+
         sel_layout.addWidget(btn_browse)
         sel_layout.addWidget(btn_clear)
         sel_layout.addWidget(self.lbl_file)
+        sel_layout.addStretch()
         sel_group.setLayout(sel_layout)
-        layout.addWidget(sel_group)
-        
+        cl.addWidget(sel_group)
+
         # 3. Select Tables (Dynamic)
         self.tbl_group = QGroupBox("3. Select Tables to Import")
-        self.tbl_layout = QVBoxLayout() # Checkboxes go here
-        
-        # Scroll area for checkboxes if many sheets
+        self.tbl_layout = QVBoxLayout()
+
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         self.chk_container = QWidget()
         self.chk_layout = QVBoxLayout(self.chk_container)
         self.chk_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
         scroll.setWidget(self.chk_container)
-        
-        layout.addWidget(self.tbl_group)
-        # We add validation to show this group only when file loaded? 
-        # But we need layout space. Let's add scroll to tbl_group layout
         self.tbl_layout.addWidget(scroll)
         self.tbl_group.setLayout(self.tbl_layout)
-        
+        cl.addWidget(self.tbl_group)
+
         self.checkboxes = {}
-        
+
         # 4. Import Action
-        act_layout = QHBoxLayout()
-        self.btn_import = QPushButton("Import Data")
+        act_row = QHBoxLayout()
+        act_row.addStretch()
+        self.btn_import = QPushButton("⬇  Import Selected Tables")
         self.btn_import.setStyleSheet(btn_primary())
         self.btn_import.setEnabled(False)
         self.btn_import.clicked.connect(self.run_import)
-        act_layout.addWidget(self.btn_import)
-        layout.addLayout(act_layout)
-        
+        act_row.addWidget(self.btn_import)
+        cl.addLayout(act_row)
+
         # Log
-        layout.addWidget(QLabel("Import Log:"))
+        lbl_log = QLabel("Import Log:")
+        lbl_log.setStyleSheet("background: transparent; font-weight: 600;")
+        cl.addWidget(lbl_log)
         self.txt_log = QTextEdit()
         self.txt_log.setReadOnly(True)
-        self.txt_log.setMaximumHeight(150)
-        layout.addWidget(self.txt_log)
+        self.txt_log.setMaximumHeight(160)
+        cl.addWidget(self.txt_log)
+
+        layout.addWidget(content, stretch=1)
         
     def download_template(self):
         path, _ = QFileDialog.getSaveFileName(self, "Save Template", "attensync_template.xlsx", "Excel Files (*.xlsx)")

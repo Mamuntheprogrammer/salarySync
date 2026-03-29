@@ -1,5 +1,5 @@
-from ui.custom_widgets import make_input_group
 from ui.btn_styles import btn_primary, btn_neutral, btn_danger
+from ui.page_helpers import make_page_header
 from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton, 
                              QLabel, QLineEdit, QCheckBox, QGroupBox, QMessageBox, QFormLayout)
 from PyQt6.QtCore import Qt
@@ -14,19 +14,25 @@ class CloudSetup(QWidget):
         self.load_settings()
         
     def init_ui(self):
-        layout = QVBoxLayout()
-        self.setLayout(layout)
-        
-        layout.addWidget(QLabel("<h2>Online Mode & Remote Database</h2>"))
-        layout.addWidget(QLabel("Configure a central database for multi-user access or backup."))
-        
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
+
+        layout.addWidget(make_page_header("Online Mode & remote db",
+                                          "Configure a central database for multi-user access or backup"))
+
+        content = QWidget()
+        cl = QVBoxLayout(content)
+        cl.setContentsMargins(20, 16, 20, 16)
+        cl.setSpacing(14)
+
         # 1. Connection
         conn_group = QGroupBox("Remote Connection")
         form = QFormLayout()
         
         self.txt_remote_uri = QLineEdit()
         self.txt_remote_uri.setPlaceholderText("postgresql://user:pass@host:port/dbname")
-        form.addRow(make_input_group("Connection String:", self.txt_remote_uri))
+        form.addRow("Connection String:", self.txt_remote_uri)
         
         btn_test = QPushButton("Test Connection")
         btn_test.setStyleSheet(btn_primary())
@@ -34,7 +40,7 @@ class CloudSetup(QWidget):
         form.addRow(btn_test)
         
         conn_group.setLayout(form)
-        layout.addWidget(conn_group)
+        cl.addWidget(conn_group)
         
         # 2. Modes
         mode_group = QGroupBox("Operation Mode")
@@ -44,12 +50,13 @@ class CloudSetup(QWidget):
         self.chk_online.setToolTip("If enabled, the app will connect directly to the Remote DB. Requires restart.")
         mode_layout.addWidget(self.chk_online)
         
-        lbl_info = QLabel("<i>Note: Enabling Online Mode allows multiple users to work on the same data in real-time. Uncheck to work offline (Local DB).</i>")
-        lbl_info.setStyleSheet("color: #666;")
+        lbl_info = QLabel("Note: Enabling Online Mode allows multiple users to work on the same data in real-time. Uncheck to work offline (Local DB).")
+        lbl_info.setStyleSheet("color: #666; font-style: italic; background: transparent;")
+        lbl_info.setWordWrap(True)
         mode_layout.addWidget(lbl_info)
         
         mode_group.setLayout(mode_layout)
-        layout.addWidget(mode_group)
+        cl.addWidget(mode_group)
         
         # 3. Actions
         act_group = QGroupBox("Data Management")
@@ -69,7 +76,7 @@ class CloudSetup(QWidget):
         # Push Local -> Remote
         btn_push = QPushButton("Push Local -> Remote")
         btn_push.setToolTip("Uploads current Local Data to Remote DB (Overwrite Remote)")
-        btn_push.setStyleSheet(btn_primary())
+        btn_push.setStyleSheet(btn_danger())
         btn_push.clicked.connect(self.push_data)
         hbox2.addWidget(btn_push)
         
@@ -82,12 +89,14 @@ class CloudSetup(QWidget):
         
         act_layout.addLayout(hbox2)
         act_group.setLayout(act_layout)
-        layout.addWidget(act_group)
+        cl.addWidget(act_group)
         
         self.lbl_status = QLabel("")
-        layout.addWidget(self.lbl_status)
+        self.lbl_status.setStyleSheet("font-weight: 600; color: #333; background: transparent;")
+        cl.addWidget(self.lbl_status)
         
-        layout.addStretch()
+        cl.addStretch()
+        layout.addWidget(content, stretch=1)
         
     def load_settings(self):
         config = Config.load_config()
@@ -110,8 +119,20 @@ class CloudSetup(QWidget):
         config["remote_db"]["connection_string"] = self.txt_remote_uri.text()
         
         if Config.save_config(config):
-            self.lbl_status.setText("Settings Saved. Please restart if you changed modes.")
-            QMessageBox.information(self, "Saved", "Settings saved successfully.\nIf you changed Online Mode, please restart the application.")
+            # 1. Update active DB connection
+            from database import db
+            db.reconnect()
+            
+            # 2. Update status bar immediately
+            from PyQt6.QtWidgets import QApplication
+            from ui.main_window import MainWindow
+            for widget in QApplication.topLevelWidgets():
+                if isinstance(widget, MainWindow):
+                    widget.top_bar.refresh_status()
+                    break
+
+            self.lbl_status.setText("Settings Saved & Applied.")
+            QMessageBox.information(self, "Saved", "Settings saved successfully.\nOnline status has been updated.")
         else:
              QMessageBox.critical(self, "Error", "Failed to save settings")
              

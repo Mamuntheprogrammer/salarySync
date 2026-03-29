@@ -7,6 +7,7 @@ from PyQt6.QtGui import QFont, QCursor
 from .terminal.employee_terminal import EmployeeTerminal
 from .admin.login_dialog import AdminLoginWidget
 from ui import theme
+from utils.user_context import set_current_user_id
 
 
 class TopBar(QWidget):
@@ -25,12 +26,20 @@ class TopBar(QWidget):
         row.setContentsMargins(16, 0, 16, 0)
         row.setSpacing(10)
 
-        # Brand
+        # Brand & Status Row
         brand = QLabel("AttenSync")
         brand.setFont(QFont("Segoe UI", 15, QFont.Weight.Bold))
         brand.setStyleSheet("color: #3F51B5; background: transparent;")
         row.addWidget(brand)
-
+        
+        self.status_dot = QLabel("⚪")
+        self.status_dot.setStyleSheet("font-size: 14px; background: transparent; margin-left: 5px;")
+        self._lbl_status_text = QLabel("Local")
+        self._lbl_status_text.setStyleSheet("font-size: 10px; font-weight: 600; color: #777; background: transparent; margin-top: 2px;")
+        
+        row.addWidget(self.status_dot)
+        row.addWidget(self._lbl_status_text)
+        
         row.addStretch()
 
         # Live clock
@@ -42,6 +51,12 @@ class TopBar(QWidget):
         clock_timer = QTimer(self)
         clock_timer.timeout.connect(self._tick)
         clock_timer.start(1000)
+
+        # Status Update timer (every 60s to avoid DB overhead)
+        self.refresh_status()
+        self.status_timer = QTimer(self)
+        self.status_timer.timeout.connect(self.refresh_status)
+        self.status_timer.start(60000) 
 
 
 
@@ -62,6 +77,33 @@ class TopBar(QWidget):
 
     def _tick(self):
         self._lbl_clock.setText(QTime.currentTime().toString("hh:mm:ss AP"))
+
+    def refresh_status(self):
+        from config import Config
+        from services.sync_service import SyncService
+        
+        config = Config.load_config()
+        remote_cfg = config.get("remote_db", {})
+        is_online = config.get("online_mode", False)
+
+        if not is_online:
+            self.status_dot.setText("⚪")
+            self._lbl_status_text.setText("Offline")
+            self._lbl_status_text.setStyleSheet("font-size: 10px; font-weight: 600; color: #777; background: transparent;")
+            return
+
+        # If online, test connection
+        service = SyncService()
+        success, _ = service.test_remote_connection(remote_cfg.get("connection_string", ""))
+        
+        if success:
+            self.status_dot.setText("🟢")
+            self._lbl_status_text.setText("Online")
+            self._lbl_status_text.setStyleSheet("font-size: 10px; font-weight: 600; color: #388E3C; background: transparent;")
+        else:
+            self.status_dot.setText("🔴")
+            self._lbl_status_text.setText("Error")
+            self._lbl_status_text.setStyleSheet("font-size: 10px; font-weight: 600; color: #D32F2F; background: transparent;")
 
 
 
@@ -142,6 +184,7 @@ class MainWindow(QMainWindow):
         self.content_layout.addWidget(self.admin_widget, stretch=1)
 
     def logout(self):
+        set_current_user_id(None)
         if self.admin_widget:
             self.content_layout.removeWidget(self.admin_widget)
             self.admin_widget.deleteLater()

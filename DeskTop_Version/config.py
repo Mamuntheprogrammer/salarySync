@@ -91,8 +91,9 @@ class Config:
                 return remote_uri
                 
         # Default Local
-        db_path = config.get("db_path", str(cls.DATA_DIR / "attensync.db"))
-        return f"sqlite:///{db_path}"
+        db_path = config.get("db_path", str(cls.DATA_DIR / "attensync_v3.db"))
+        return f"sqlite:///{Path(db_path).as_posix()}"
+
 
     @classmethod
     def get_time_fmt(cls):
